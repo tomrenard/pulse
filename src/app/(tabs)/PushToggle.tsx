@@ -28,7 +28,13 @@ export function PushToggle() {
       .then((s) => setState(s ? "on" : "off"))
       .catch(() => setState("hidden"));
   }, []);
-  if (state === "hidden") return null;
+  if (state === "hidden")
+    return (
+      <p className="caption">
+        Add pulse to your Home Screen (Share → Add to Home Screen) and open it from there to turn
+        this on.
+      </p>
+    );
   const toggle = async () => {
     setState("busy");
     const reg = await navigator.serviceWorker.ready;

@@ -6,7 +6,7 @@ import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
-import { mondayOf, type VolumeActivity, WEEKS, weeklyVolume } from "@/lib/volume";
+import { hoursOf, mondayOf, type VolumeActivity, WEEKS, weeklyVolume } from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Step = {
@@ -84,14 +84,16 @@ export async function loadToday() {
     tsb,
     ftp,
     workout: events.find((e) => e.category === "WORKOUT" && e.start_date_local.startsWith(date)),
-    /** Planned sessions for the next 6 days. */
+    /** Planned sessions and races for the next 6 days. */
     coming: events.filter(
-      (e) => e.category === "WORKOUT" && e.start_date_local.slice(0, 10) > date,
+      (e) =>
+        (e.category === "WORKOUT" || e.category.startsWith("RACE")) &&
+        e.start_date_local.slice(0, 10) > date,
     ),
     notes: events.filter((e) => e.category === "NOTE" && e.start_date_local.startsWith(date)),
     lastSync,
     volume: weeklyVolume(activities, date),
     corosConnected: connected,
-    plannedHours: covers ? week.reduce((s, e) => s + (e.moving_time ?? 0), 0) / 3600 : undefined,
+    plannedHours: covers ? hoursOf(week) : undefined,
   };
 }

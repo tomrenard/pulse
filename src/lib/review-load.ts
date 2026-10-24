@@ -3,6 +3,7 @@ import { intervals } from "@/lib/intervals";
 import { loadNights, orNothing } from "@/lib/nights";
 import { reviewSunday, weeklyReview } from "@/lib/review";
 import type { PlanEvent } from "@/lib/today";
+import { hoursOf } from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number };
 type Done = { moving_time?: number };
@@ -24,12 +25,10 @@ export async function loadReview(date: string) {
       [],
     ),
   ]);
-  const hours = (xs: { moving_time?: number }[]) =>
-    xs.reduce((s, x) => s + (x.moving_time ?? 0), 0) / 3600;
   return weeklyReview({
     sunday,
-    doneHours: hours(done),
-    plannedHours: hours(events.filter((e) => e.category === "WORKOUT")),
+    doneHours: hoursOf(done),
+    plannedHours: hoursOf(events.filter((e) => e.category === "WORKOUT")),
     ctlBefore: wellness.find((w) => w.id === before)?.ctl,
     ctlAfter: wellness.find((w) => w.id === sunday)?.ctl,
     nights,

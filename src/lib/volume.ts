@@ -20,6 +20,10 @@ export type VolumeActivity = {
   icu_training_load?: number;
 };
 
+/** Total moving time in hours. */
+export const hoursOf = (xs: { moving_time?: number }[]) =>
+  xs.reduce((s, x) => s + (x.moving_time ?? 0), 0) / 3600;
+
 export const sportOf = (type = ""): Sport =>
   /ride/i.test(type) ? "ride" : /run/i.test(type) ? "run" : /swim/i.test(type) ? "swim" : "other";
 

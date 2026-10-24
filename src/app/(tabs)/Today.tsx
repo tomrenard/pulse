@@ -5,7 +5,7 @@ import { hmm } from "@/lib/format";
 import { splitPlan } from "@/lib/plan";
 import { MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
-import { sportOf } from "@/lib/volume";
+import { hoursOf, sportOf } from "@/lib/volume";
 import { Delta, Dot, Glyph, hm, Module, SportChip } from "./ui";
 
 type Night = typeof night.$inferSelect & { tagged?: boolean };
@@ -79,9 +79,8 @@ export function ComingUp({
 }) {
   if (events.length === 0) return null;
   const days = Array.from({ length: 6 }, (_, i) => addDays(date, i + 1));
-  const total = events.reduce((s, e) => s + (e.moving_time ?? 0), 0);
   return (
-    <Module title="Coming up" value={hmm(total)}>
+    <Module title="Coming up" value={hmm(hoursOf(events) * 3600)}>
       <ul className="feed plan">
         {days.flatMap((day) => {
           const sessions = events.filter((e) => e.start_date_local.startsWith(day));
@@ -92,23 +91,42 @@ export function ComingUp({
                 <span>Rest</span>
               </li>
             );
-          return sessions.map((e, i) => (
-            <li key={e.id}>
-              <details>
-                <summary>
-                  <span className="plan-day">{i === 0 ? weekday(day) : ""}</span>
-                  <SportChip sport={sportOf(e.type)} />
-                  <span className="what">
-                    <b>{e.name ?? e.type}</b>
-                  </span>
-                  <span className="num figures">{e.moving_time ? hmm(e.moving_time) : "–"}</span>
-                </summary>
-                <div className="plan-detail">
-                  <PlanDetail event={e} ftp={ftp} />
-                </div>
-              </details>
-            </li>
-          ));
+          return sessions.map((e, i) => {
+            const row = (
+              <>
+                <span className="plan-day">{i === 0 ? weekday(day) : ""}</span>
+                <SportChip sport={sportOf(e.type)} />
+                <span className="what">
+                  <b>{e.name ?? e.type}</b>
+                </span>
+                <span className="num figures">
+                  {e.category.startsWith("RACE")
+                    ? "Race"
+                    : e.moving_time
+                      ? hmm(e.moving_time)
+                      : "–"}
+                </span>
+              </>
+            );
+            const { note, steps } = splitPlan(e.description);
+            // Nothing to open: a plain row, not a control that opens onto nothing.
+            if (!note && steps.length === 0)
+              return (
+                <li key={e.id} className="plan-row">
+                  {row}
+                </li>
+              );
+            return (
+              <li key={e.id}>
+                <details>
+                  <summary>{row}</summary>
+                  <div className="plan-detail">
+                    <PlanDetail event={e} ftp={ftp} />
+                  </div>
+                </details>
+              </li>
+            );
+          });
         })}
       </ul>
     </Module>

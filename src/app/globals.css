@@ -822,10 +822,7 @@ details.more summary {
   color: var(--form);
   cursor: pointer;
 }
-details.more summary::-webkit-details-marker {
-  display: none;
-}
-
+details.more summary::-webkit-details-marker,
 .stages.labelled {
   height: 22px;
   border-radius: 7px;
@@ -1395,7 +1392,8 @@ ul.tri {
 }
 
 /* The plan: next days on Today */
-.plan summary {
+.plan summary,
+.plan-row {
   display: grid;
   grid-template-columns: 34px 30px minmax(0, 1fr) auto;
   gap: 10px;
@@ -1445,4 +1443,21 @@ ul.plan-steps {
   font-size: 13px;
   line-height: 1.6;
   color: var(--fg-2);
+}
+
+/* Today's settings button, top right of the hero */
+.hero-tools {
+  position: absolute;
+  top: 8px;
+  right: 0;
+}
+.hero-tools .info-btn {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  color: var(--fg-2);
+}
+.hero-tools .info-btn svg {
+  width: 22px;
+  height: 22px;
 }
