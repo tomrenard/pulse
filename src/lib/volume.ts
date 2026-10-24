@@ -1,0 +1,44 @@
+import { addDays } from "./date.ts";
+
+export type Sport = "ride" | "run" | "swim" | "other";
+export const SPORTS: Sport[] = ["ride", "run", "swim", "other"];
+
+export type VolumeActivity = {
+  start_date_local: string;
+  type?: string;
+  moving_time?: number;
+  distance?: number;
+  icu_training_load?: number;
+};
+
+export const sportOf = (type = ""): Sport =>
+  /ride/i.test(type) ? "ride" : /run/i.test(type) ? "run" : /swim/i.test(type) ? "swim" : "other";
+
+export type Totals = Record<Sport, { hours: number; km: number; load: number }>;
+const empty = (): Totals =>
+  Object.fromEntries(SPORTS.map((s) => [s, { hours: 0, km: 0, load: 0 }])) as Totals;
+
+export const mondayOf = (date: string) => {
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return addDays(date, -((day + 6) % 7));
+};
+
+/** Weekly totals per sport for the `weeks` weeks ending with the current one (Mon–Sun). */
+export function weeklyVolume(activities: VolumeActivity[], today: string, weeks = 12) {
+  const first = addDays(mondayOf(today), -7 * (weeks - 1));
+  const out = Array.from({ length: weeks }, (_, i) => ({
+    monday: addDays(first, i * 7),
+    sports: empty(),
+  }));
+  for (const a of activities) {
+    const day = a.start_date_local.slice(0, 10);
+    if (day < first || day > today) continue;
+    const week = out[Math.floor((Date.parse(day) - Date.parse(first)) / (7 * 864e5))];
+    if (!week) continue;
+    const t = week.sports[sportOf(a.type)];
+    t.hours += (a.moving_time ?? 0) / 3600;
+    t.km += (a.distance ?? 0) / 1000;
+    t.load += a.icu_training_load ?? 0;
+  }
+  return out;
+}

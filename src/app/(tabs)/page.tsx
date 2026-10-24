@@ -7,6 +7,7 @@ import { Hero } from "./Hero";
 import { Sky } from "./Sky";
 import { FormTile, HrvList, PlanStrip, RhrTile, SleepTile, StressTile, Workout } from "./Today";
 import { hm } from "./ui";
+import { Volume } from "./Volume";
 
 /** Opening the app before the 09:00 UTC cron pulls last night, at most every 20 minutes. */
 const PULL_AFTER_MS = 20 * 60 * 1000;
@@ -50,6 +51,7 @@ export default async function TodayPage() {
           </div>
         )}
       </Hero>
+      <Volume weeks={t.volume} />
       <PlanStrip date={t.date} plan={t.plan} />
       <Workout
         event={t.plan.find(
