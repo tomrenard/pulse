@@ -124,10 +124,6 @@ export async function loadRecords() {
       ) || undefined,
     pb: level(0),
     now: level(3),
-    badges: badges(
-      activities,
-      today(),
-      run.map((r) => ({ distance: r.distance, secs: r.values[0] })),
-    ),
+    badges: badges(activities, today()),
   };
 }

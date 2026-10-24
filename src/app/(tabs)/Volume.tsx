@@ -24,11 +24,14 @@ export function Volume({
   weeks,
   title = "This week",
   href,
+  compact = false,
 }: {
   weeks: { monday: string; sports: Totals }[];
   title?: string;
   /** Where tapping the chart goes (Today → Training); none on Training itself. */
   href?: string;
+  /** Year view: no this-week number or split (the page hero has them). */
+  compact?: boolean;
 }) {
   const [measure, setMeasure] = useState<Measure>("hours");
   const total = (s: Totals, m: Measure) => SPORTS.reduce((sum, sp) => sum + s[sp][m], 0);
@@ -89,10 +92,12 @@ export function Volume({
         </fieldset>
       </div>
       <div className="mod-b">
-        <div className="big-num num">
-          {now ? fmt("hours", total(now, "hours")) : "–"}
-          <small> · {now ? fmt("km", total(now, "km")) : ""}</small>
-        </div>
+        {!compact && (
+          <div className="big-num num">
+            {now ? fmt("hours", total(now, "hours")) : "–"}
+            <small> · {now ? fmt("km", total(now, "km")) : ""}</small>
+          </div>
+        )}
         {href ? (
           <Link
             href={href}
@@ -104,16 +109,20 @@ export function Volume({
         ) : (
           <div className="chart">{chart}</div>
         )}
-        <div className="split num">
-          {SPORTS.filter((sp) => now && now[sp].hours > 0).map((sp) => (
-            <span key={sp}>
-              <i style={{ background: SPORT_COLOR[sp] }} />
-              <b>{sp}</b> {fmt("hours", now?.[sp].hours ?? 0)}
-              {sp !== "other" && now ? ` · ${fmt("km", now[sp].km)}` : ""}
-            </span>
-          ))}
-          {now && total(now, "hours") === 0 && <span className="dim">Nothing yet this week.</span>}
-        </div>
+        {!compact && (
+          <div className="split num">
+            {SPORTS.filter((sp) => now && now[sp].hours > 0).map((sp) => (
+              <span key={sp}>
+                <i style={{ background: SPORT_COLOR[sp] }} />
+                <b>{sp}</b> {fmt("hours", now?.[sp].hours ?? 0)}
+                {sp !== "other" && now ? ` · ${fmt("km", now[sp].km)}` : ""}
+              </span>
+            ))}
+            {now && total(now, "hours") === 0 && (
+              <span className="dim">Nothing yet this week.</span>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -132,6 +132,7 @@ export function powerVsFitness(
     a,
     b,
     n: points.length,
+    points,
     p80: errors[Math.ceil(errors.length * 0.8) - 1] ?? 0, // nearest-rank 80th percentile
     minCtl: Math.min(...points.map((p) => p.ctl)),
     maxCtl: Math.max(...points.map((p) => p.ctl)),

@@ -20,13 +20,8 @@ export type Badge = {
 
 const km = (m: number) => Math.round(m / 1000).toLocaleString("en-GB");
 
-/** Fun milestones from the activity list and run bests. `goalKm` is the A-race distance. */
-export function badges(
-  activities: BadgeActivity[],
-  today: string,
-  runBest: { distance: number; secs?: number }[],
-  goalKm = 735,
-): Badge[] {
+/** Fun milestones from the activity list (records live on their own bars). `goalKm`: the ultra goal. */
+export function badges(activities: BadgeActivity[], today: string, goalKm = 735): Badge[] {
   const rides = activities.filter((a) => sportOf(a.type) === "ride");
   const longest = Math.max(0, ...rides.map((a) => a.distance ?? 0));
   const weeks = new Map<string, { secs: number; count: number }>();
@@ -56,16 +51,6 @@ export function badges(
   const total = activities.reduce((s, a) => s + (a.distance ?? 0), 0);
   const bricks = [...days.values()].filter((s) => s.has("ride") && s.has("run")).length;
   const centuries = rides.filter((a) => (a.distance ?? 0) >= 100_000).length;
-  const sub = (distance: number, limit: number, label: string) => {
-    const secs = runBest.find((r) => r.distance === distance)?.secs;
-    const done = Boolean(secs && secs < limit);
-    return {
-      title: label,
-      value: done ? "Done" : "Not yet",
-      detail: "best effort, any run",
-      earned: done,
-    };
-  };
   return [
     {
       title: "Longest ride",
@@ -112,9 +97,5 @@ export function badges(
       detail: "ride and run the same day",
       earned: bricks > 0,
     },
-    sub(5000, 20 * 60, "Sub-20 5 km"),
-    sub(10000, 40 * 60, "Sub-40 10 km"),
-    sub(21097.5, 90 * 60, "Sub-1:30 half"),
-    sub(42195, 3 * 3600, "Sub-3 marathon"),
   ];
 }

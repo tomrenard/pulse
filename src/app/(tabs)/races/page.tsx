@@ -1,97 +1,150 @@
 import type { Badge } from "@/lib/badges";
-import { daysBetween } from "@/lib/date";
 import { clock as time } from "@/lib/format";
-import { criticalSpeed, predictTime, swimCss } from "@/lib/races";
+import { swimCss } from "@/lib/races";
 import { loadRaceExtras } from "@/lib/races-load";
-import { loadRecords, WINDOWS } from "@/lib/records";
+import { loadRecords } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
 import { LongRide } from "./LongRide";
+import { RecordBars } from "./RecordBars";
 
-const daysTo = (from: string, to: string) =>
-  Math.round((Date.parse(to) - Date.parse(from)) / 864e5);
+type Records = Awaited<ReturnType<typeof loadRecords>>;
 
-function Table({
-  rows,
-  show,
-}: {
-  rows: { label: string; values: (number | undefined)[] }[];
-  show: (v?: number) => string;
-}) {
+/** Run and ride on one "% of world class" bar each, with the class marks and PB vs now. */
+function Level({ r }: { r: Records }) {
+  const rows = [
+    ["run", "Run", "var(--go)"],
+    ["ride", "Ride", "var(--form)"],
+  ] as const;
   return (
-    <table className="records num">
-      <thead>
-        <tr>
-          <th scope="col">
-            <span className="sr">Effort</span>
-          </th>
-          {WINDOWS.map(([id, label]) => (
-            <th key={id} scope="col">
-              {label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.label}>
-            <th scope="row">{r.label}</th>
-            {r.values.map((v, i) => (
-              <td key={WINDOWS[i]?.[0]} className={i === 0 ? "pb" : undefined}>
-                {show(v)}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-type Level = Awaited<ReturnType<typeof loadRecords>>["pb"];
-
-function LevelCard({ sport, pb, now }: { sport: "run" | "ride"; pb: Level; now: Level }) {
-  const best = pb[sport];
-  const current = now[sport];
-  if (!best) return null;
-  return (
-    <section className="mod tile level" aria-label={`${sport} level`}>
-      <div className="mod-h">{sport === "run" ? "Running" : "Riding"}</div>
-      <div className="mod-b">
-        <div className="w">{best.name}</div>
-        <div className="say dim">{best.real}</div>
-        {best.beats !== undefined && (
-          <div className="say">
-            Faster than {best.beats} of{" "}
-            {sport === "run" ? "male race finishers" : "men 25–34 who train"}
-          </div>
-        )}
-        <div className="say">
-          <b>Now:</b>{" "}
-          {current ? `${current.name} (${Math.round(current.pct)}%)` : "no recent hard effort"}
+    <Module
+      title="Your level"
+      info={
+        <>
+          <p>
+            Run: your best performance as an age grade (WMA/USATF 2025 tables). Ride: your FTP in
+            W/kg against Coggan's world-class 6.4 W/kg. For running, 60 % is local class, 70 %
+            regional, 80 % national, 90 % world class; Coggan's riding categories line up roughly.
+          </p>
+          {r.pb.run && (
+            <p>
+              Run: {r.pb.run.real}. Faster than {r.pb.run.beats ?? "–"} of male race finishers
+              (RunRepeat, approximate).
+            </p>
+          )}
+          {r.pb.ride && (
+            <p>
+              Ride: {r.pb.ride.real}. Above {r.pb.ride.beats} of men 25–34 who train (Roadman,
+              approximate).
+            </p>
+          )}
+          <p>The white marker is where you are now (best of the last 6 weeks).</p>
+        </>
+      }
+    >
+      <div className="mod-b levels">
+        {rows.map(([key, label, color]) => {
+          const best = r.pb[key];
+          const now = r.now[key];
+          if (!best) return null;
+          return (
+            <div key={key} className="level-row">
+              <div className="level-top">
+                <span>{label}</span>
+                <b>{best.name}</b>
+                <span className="num">{Math.round(best.pct)}%</span>
+              </div>
+              <div className="level-bar" aria-hidden="true">
+                {[60, 70, 80, 90].map((m) => (
+                  <i key={m} className="tick" style={{ left: `${m}%` }} />
+                ))}
+                <i
+                  className="fill"
+                  style={{ width: `${Math.min(100, best.pct)}%`, background: color }}
+                />
+                {now && <i className="now" style={{ left: `${Math.min(100, now.pct)}%` }} />}
+              </div>
+            </div>
+          );
+        })}
+        <div className="level-scale" aria-hidden="true">
+          <span style={{ left: "60%" }}>Local</span>
+          <span style={{ left: "70%" }}>Reg.</span>
+          <span style={{ left: "80%" }}>Nat.</span>
+          <span style={{ left: "90%" }}>World</span>
         </div>
       </div>
-    </section>
+    </Module>
   );
 }
 
+const BADGE_GLYPH: Record<string, React.ReactNode> = {
+  "Longest ride": <path d="M3 17h4l3-8 4 6 3-4h4" />,
+  "Biggest week": <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />,
+  Centuries: <path d="M5 12a7 7 0 1 0 14 0 7 7 0 1 0-14 0M12 8v4l3 2" />,
+  "Around the world": (
+    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18" />
+  ),
+  "Week streak": <path d="M12 3c2 4 6 5 6 10a6 6 0 0 1-12 0c0-3 2-4 2-7 2 1 3 3 4 3" />,
+  "Brick days": <path d="M4 7h16v10H4zM4 12h16M12 7v5M8 12v5M16 12v5" />,
+};
+// Everest and anything new: a peak.
+const glyphFor = (title: string) => BADGE_GLYPH[title] ?? <path d="M2 20 9 7l4 6 3-4 6 11z" />;
+
+/** Compact icon grid: value under each icon, a progress ring when not earned yet. */
 function Badges({ list }: { list: Badge[] }) {
+  const cell = (b: Badge) => (
+    <div
+      key={b.title}
+      className={`badge-cell${b.earned ? " earned" : ""}`}
+      title={`${b.title}: ${b.detail}`}
+    >
+      <span
+        className="badge-icon"
+        style={
+          b.progress !== undefined && !b.earned
+            ? ({ "--p": b.progress } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          {glyphFor(b.title)}
+        </svg>
+      </span>
+      <b className="num">{b.value}</b>
+      <small>{b.title}</small>
+    </div>
+  );
   return (
-    <Module title="Badges">
-      <div className="mod-b badges">
-        {list.map((b) => (
-          <div key={b.title} className={`badge${b.earned ? " earned" : ""}`}>
-            <b className="num">{b.value}</b>
-            <span>{b.title}</span>
-            {b.progress !== undefined && (
-              <i className="meter">
-                <i style={{ width: `${Math.round(b.progress * 100)}%` }} />
-              </i>
-            )}
-            <small>{b.detail}</small>
-          </div>
-        ))}
+    <Module
+      title="Badges"
+      info={
+        <>
+          {list.map((b) => (
+            <p key={b.title}>
+              {b.title}: {b.value}, {b.detail}.
+            </p>
+          ))}
+        </>
+      }
+    >
+      <div className="mod-b">
+        <div className="badge-grid">{list.slice(0, 4).map(cell)}</div>
+        {list.length > 4 && (
+          <details className="more">
+            <summary>See all {list.length}</summary>
+            <div className="badge-grid">{list.slice(4).map(cell)}</div>
+          </details>
+        )}
       </div>
     </Module>
   );
@@ -100,195 +153,74 @@ function Badges({ list }: { list: Badge[] }) {
 export default async function RacesPage() {
   const [r, x] = await Promise.all([loadRecords(), loadRaceExtras()]);
   const pb5k = r.run[0]?.values[0];
-  const cs = criticalSpeed(x.runPoints);
   const css = swimCss(x.swim200, x.swim400);
   const vo2 = (v?: number) => (v ? Math.round(v) : "–");
   return (
     <Sky state="go">
-      <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km best">
-        <div className="cond">Your best efforts, then and now</div>
+      <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km PB">
+        <div className="verdict">5 km PB</div>
         <div className="hl num">
-          FTP {r.ftpSet ?? "–"} W set <span>·</span> {r.ftpModel ?? "–"} W eFTP
+          FTP {r.ftpSet ?? "–"} W <span>· eFTP {r.ftpModel ?? "–"} W</span>
         </div>
       </Hero>
 
-      <div className="tiles">
-        <LevelCard sport="run" pb={r.pb} now={r.now} />
-        <LevelCard sport="ride" pb={r.pb} now={r.now} />
-      </div>
-      {r.pb.run && r.pb.ride && (
-        <Module title="One scale · % of world class">
-          <div className="mod-b">
-            {(["run", "ride"] as const).map((sp) => {
-              const pct = r.pb[sp]?.pct ?? 0;
-              return (
-                <div key={sp} className="scale">
-                  <span>{sp === "run" ? "Run" : "Ride"}</span>
-                  <i className="meter">
-                    <i
-                      style={{
-                        width: `${Math.min(100, pct)}%`,
-                        background: sp === "run" ? "var(--go)" : "var(--form)",
-                      }}
-                    />
-                  </i>
-                  <b className="num">{Math.round(pct)}%</b>
-                </div>
-              );
-            })}
-            <p className="say dim">
-              Your best run as an age grade, your best ride as W/kg against Coggan's world-class
-              6.4. For running, 60% is local class, 70% regional, 80% national, 90% world class;
-              Coggan's riding categories only roughly line up with that.{" "}
-              {Math.abs((r.pb.run?.pct ?? 0) - (r.pb.ride?.pct ?? 0)) < 3
-                ? "Both sides are about even."
-                : (r.pb.run?.pct ?? 0) > (r.pb.ride?.pct ?? 0)
-                  ? "Running is your stronger side."
-                  : "Riding is your stronger side."}
-            </p>
-          </div>
-        </Module>
-      )}
+      <Level r={r} />
 
-      <Module title="Run · best times">
-        <div className="mod-b">
-          <Table rows={r.run} show={time} />
-          <p className="say dim">
-            Fastest stretch of any run at that distance, so a 10 km PB can sit inside a half
-            marathon.
+      <Module
+        title="Run · PB vs now"
+        info={
+          <p>
+            Fastest stretch of any run at that distance (intervals.icu best efforts), so a 10 km PB
+            can sit inside a half marathon. The filled bar is your best in the chosen window as a
+            share of PB speed.
           </p>
+        }
+      >
+        <div className="mod-b">
+          <RecordBars rows={r.run} kind="time" color="var(--go)" />
         </div>
       </Module>
 
-      <Module title="Ride · best power">
+      <Module
+        title="Ride · PB vs now"
+        value={`VO₂max ${vo2(r.vo2[0]?.ride)}`}
+        info={
+          <>
+            <p>
+              Best average power for each duration (power data starts in 2025). The filled bar is
+              your best in the chosen window as a share of the PB.
+            </p>
+            <p>
+              FTP {r.ftpSet ?? "–"} W is the value set in intervals.icu; eFTP {r.ftpModel ?? "–"} W
+              is intervals.icu's running estimate from recent rides.
+            </p>
+            <p>
+              Ride VO₂max: Hawley &amp; Noakes from best 5-min power at that day's weight (
+              {vo2(r.vo2[3]?.ride)} over the last 6 weeks).
+            </p>
+          </>
+        }
+      >
         <div className="mod-b">
-          <Table rows={r.power} show={(v) => (v ? `${v} W` : "–")} />
-          <p className="say dim">
-            Power data starts in 2025. FTP {r.ftpSet ?? "–"} W is the value set in intervals.icu;{" "}
-            {r.ftpModel ?? "–"} W is intervals.icu's eFTP, its running estimate from recent rides.
-          </p>
+          <RecordBars rows={r.power} kind="watts" color="var(--form)" />
         </div>
       </Module>
 
       <Badges list={r.badges} />
 
-      <p className="say dim" style={{ padding: "0 4px" }}>
-        Sources: WMA/USATF 2025 age-grading tables; Coggan power profile; RunRepeat (35M race
-        results) and Roadman benchmarks for the percentages, which are approximate.
-      </p>
-
-      <Module title="Races ahead">
+      <details className="mod tools">
+        <summary className="mod-h">
+          <span>Tools</span>
+        </summary>
         <div className="mod-b">
-          {x.races.length === 0 ? (
-            <p className="say dim" style={{ marginTop: 0 }}>
-              No race in intervals.icu for the next 12 months. Add one as an A, B or C race.
-            </p>
-          ) : (
-            <ul className="plain">
-              {x.races.map((race) => (
-                <li key={race.id}>
-                  <b className="num">{daysBetween(x.date, race.start_date_local.slice(0, 10))} d</b>{" "}
-                  {race.name ?? "Race"}{" "}
-                  <span className="dim">· {race.category.replace("RACE_", "")} race</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Module>
-
-      <Module title="VO₂max estimates">
-        <div className="mod-b">
-          <table className="records num">
-            <thead>
-              <tr>
-                <th scope="col">
-                  <span className="sr">Sport</span>
-                </th>
-                <th scope="col">Best</th>
-                <th scope="col">6 wk</th>
-                <th scope="col">COROS</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">Running</th>
-                <td className="pb">{vo2(r.vo2[0]?.run)}</td>
-                <td>{vo2(r.vo2[3]?.run)}</td>
-                <td>{vo2(x.coros?.vo2max)}</td>
-              </tr>
-              <tr>
-                <th scope="row">Riding</th>
-                <td className="pb">{vo2(r.vo2[0]?.ride)}</td>
-                <td>{vo2(r.vo2[3]?.ride)}</td>
-                <td>–</td>
-              </tr>
-            </tbody>
-          </table>
-          <p className="say dim">
-            ml/kg/min. Running: Daniels VDOT from your best effort (5 km to half). Riding: Hawley
-            &amp; Noakes from best 5-min power at that day's weight. Both are estimates from
-            training bests, typically within 5–10% of a lab test at best.
-          </p>
-        </div>
-      </Module>
-
-      <Module title="Run race estimates">
-        <div className="mod-b">
-          {"cs" in cs ? (
-            <div className="stats num">
-              {(
-                [
-                  [5000, "5 km"],
-                  [10000, "10 km"],
-                ] as const
-              ).map(([d, label]) => {
-                const t = predictTime(cs, d);
-                return (
-                  <span key={label}>
-                    <b>
-                      {time(t * 0.94)}–{time(t * 1.06)}
-                    </b>
-                    {label}
-                  </span>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="say dim" style={{ marginTop: 0 }}>
-              {cs.problem}
-            </p>
-          )}
-          {x.coros?.k5 && (
-            <p className="say">
-              COROS predicts (
-              {x.corosAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}) 5 km{" "}
-              {time(x.coros.k5)}, 10 km {time(x.coros.k10)}, half {time(x.coros.half)}, marathon{" "}
-              {time(x.coros.marathon)}.
-            </p>
-          )}
-          <p className="say dim">
-            Ours: critical speed from your hardest 3–15 min efforts of the last 12 weeks, ±6%
-            (checked against your own races, where it ran ~2% slow). COROS uses its own model.
-          </p>
-        </div>
-      </Module>
-
-      <Module title="Swim · critical speed">
-        <div className="mod-b">
-          <p className="say" style={{ marginTop: 0 }}>
-            {"problem" in css
-              ? css.problem
-              : `CSS ${time(css.per100)} /100 m, from your best 200 m (${time(x.swim200)}) and 400 m (${time(x.swim400)}).`}
-          </p>
-        </div>
-      </Module>
-
-      <Module title="Long ride estimate">
-        <div className="mod-b">
+          <h3 className="tool-h">Long ride estimate</h3>
           <LongRide ftp={r.ftpModel ?? r.ftpSet} kg={r.weight} />
+          <h3 className="tool-h">Swim critical speed</h3>
+          <p className="caption">
+            {"problem" in css ? css.problem : `CSS ${time(css.per100)} /100 m`}
+          </p>
         </div>
-      </Module>
+      </details>
     </Sky>
   );
 }

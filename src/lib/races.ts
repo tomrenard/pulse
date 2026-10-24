@@ -164,3 +164,56 @@ export function rideTime(route: Stretch[], s: RideSetup) {
   const metres = route.reduce((sum, r) => sum + r.metres, 0);
   return { secs, metres, climb };
 }
+
+/**
+ * Sport and distance of a planned race, from intervals.icu's fields or its name when they're empty
+ * ("S25 Berlin 10k", "Hamburg Open Standard Triathlon").
+ */
+export function raceInfo(e: {
+  name?: string;
+  type?: string;
+  distance?: number;
+  distance_target?: number;
+}) {
+  const name = (e.name ?? "").toLowerCase();
+  const metres = e.distance ?? e.distance_target;
+  if (/tri(athlon)?\b|ironman|70\.3/.test(name)) {
+    const sprint = /sprint/.test(name);
+    return {
+      sport: "tri" as const,
+      metres: undefined,
+      label: sprint
+        ? "Sprint triathlon"
+        : /half|70\.3/.test(name)
+          ? "Half distance"
+          : /ironman|full/.test(name)
+            ? "Full distance"
+            : "Olympic triathlon",
+    };
+  }
+  if (/run/i.test(e.type ?? "") || /\b(\d+(?:\.\d+)?)\s?k(m)?\b|marathon|half/.test(name)) {
+    const km = name.match(/\b(\d+(?:\.\d+)?)\s?k(m)?\b/)?.[1];
+    const d =
+      metres ??
+      (km
+        ? Number(km) * 1000
+        : /half/.test(name)
+          ? 21097.5
+          : /marathon/.test(name)
+            ? 42195
+            : undefined);
+    if (/run/i.test(e.type ?? "") || d)
+      return {
+        sport: "run" as const,
+        metres: d,
+        label: d ? `${d >= 42000 ? "Marathon" : d >= 21000 ? "Half" : `${d / 1000} km`}` : "Run",
+      };
+  }
+  return {
+    sport: /ride|bike|fondo|gravel|tour/i.test(`${e.type} ${name}`)
+      ? ("ride" as const)
+      : ("other" as const),
+    metres,
+    label: /fondo/.test(name) ? "Gran fondo" : (e.type ?? "Race"),
+  };
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { clampCtl, formPct, type PowerFit, powerAt, projectFitness } from "@/lib/outlook";
+import { formPct, type PowerFit, powerAt, projectFitness } from "@/lib/outlook";
 import { Forecast } from "../charts";
 
 type Rate = { rate: number; typical: boolean };
@@ -34,10 +34,6 @@ export function WhatIf({
   const rideLoads = Array(days).fill((ride * rideRate.rate) / 7);
   const rideEnd = projectFitness(date, rideCtl, rideCtl, rideLoads).at(-1)?.ctl ?? 0;
   const power = fit && powerAt(fit, rideEnd);
-  const rate = (r: Rate, sport: string) =>
-    r.typical
-      ? `a typical ${Math.round(r.rate)} load/h ${sport} (too little recent ${sport} to use yours)`
-      : `your recent ${Math.round(r.rate)} load/h ${sport}`;
 
   const slider = (
     label: string,
@@ -66,8 +62,8 @@ export function WhatIf({
 
   return (
     <>
-      {slider("Riding", ride, setRide, [0, 20, 0.5], "h/week")}
-      {slider("Running", run, setRun, [0, 10, 0.5], "h/week")}
+      {slider("Ride", ride, setRide, [0, 20, 0.5], "h/wk")}
+      {slider("Run", run, setRun, [0, 10, 0.5], "h/wk")}
       {slider("For", weeks, setWeeks, [1, 16, 1], weeks === 1 ? "week" : "weeks")}
       <Forecast days={path} />
       {end && (
@@ -88,18 +84,6 @@ export function WhatIf({
           )}
         </div>
       )}
-      <p className="say dim">
-        A scenario, not a forecast: it assumes you do exactly this, at {rate(rideRate, "riding")}{" "}
-        and {rate(runRate, "running")}.
-        {power && fit
-          ? ` The 20-min range is what you typically rode at ride fitness ${Math.round(clampCtl(fit, rideEnd))} in your history (8 of 10 weeks inside it), not a test result.`
-          : ""}
-        {fit && rideEnd > fit.maxCtl
-          ? ` You haven't been above ride fitness ${Math.round(fit.maxCtl)}, so power is shown there.`
-          : fit && rideEnd < fit.minCtl
-            ? ` You haven't been below ride fitness ${Math.round(fit.minCtl)}, so power is shown there.`
-            : ""}
-      </p>
     </>
   );
 }

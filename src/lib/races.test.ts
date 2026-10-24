@@ -5,6 +5,7 @@ import {
   cyclingVo2,
   parseCorosFitness,
   predictTime,
+  raceInfo,
   rideTime,
   stretches,
   swimCss,
@@ -110,4 +111,21 @@ test("GPX points become ~100 m stretches", () => {
   const s = stretches(pts);
   expect(s[0]?.metres).toBeCloseTo(111, 0);
   expect(s[0]?.grade).toBeCloseTo(10 / 111, 2);
+});
+
+test("race info from names when intervals.icu has no distance", () => {
+  expect(raceInfo({ name: "S25 Berlin 10k", type: "Run" })).toMatchObject({
+    sport: "run",
+    metres: 10000,
+    label: "10 km",
+  });
+  expect(raceInfo({ name: "Hamburg Open Standard Triathlon", type: "Ride" })).toMatchObject({
+    sport: "tri",
+    label: "Olympic triathlon",
+  });
+  expect(raceInfo({ name: "Sudety Tour Granfondo (Broumov CZ)", type: "Ride" })).toMatchObject({
+    sport: "ride",
+    label: "Gran fondo",
+  });
+  expect(raceInfo({ name: "City Half Marathon" })).toMatchObject({ sport: "run", metres: 21097.5 });
 });

@@ -102,7 +102,7 @@ export function Bars({
             height={H - y(p.value)}
             rx={Math.min(3, slot * 0.3)}
             fill={color}
-            fillOpacity={i === points.length - 1 ? 1 : 0.5}
+            fillOpacity={i === points.length - 1 ? 1 : 0.7}
           />
         ))}
         {target !== undefined && (
@@ -218,18 +218,69 @@ export function Zones({ secs, label }: { secs: number[]; label: string }) {
         {secs.map((x, i) =>
           x > 0 ? (
             // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
-            <i key={i} style={{ flex: x, background: ZONE_COLORS[i] }} />
+            <i key={i} style={{ flex: x, background: ZONE_COLORS[i] }}>
+              {(pct[i] ?? 0) >= 10 ? `Z${i + 1} ${pct[i]}%` : ""}
+            </i>
           ) : null,
         )}
       </div>
-      <div className="zone-legend num">
-        {secs.map((x, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
-          <span key={i}>
-            Z{i + 1} {pct[i]}%
-          </span>
-        ))}
-      </div>
     </div>
+  );
+}
+
+/** Weekly points (x: ride fitness, y: best 20-min power), the fitted line and today's spot. */
+export function Scatter({
+  points,
+  line,
+  today,
+}: {
+  points: { ctl: number; power: number }[];
+  line: { a: number; b: number };
+  today?: { ctl: number; power: number };
+}) {
+  const all = [...points, ...(today ? [today] : [])];
+  const x0 = Math.min(...all.map((p) => p.ctl)) - 2;
+  const x1 = Math.max(...all.map((p) => p.ctl)) + 2;
+  const y0 = Math.min(...all.map((p) => p.power)) - 10;
+  const y1 = Math.max(...all.map((p) => p.power)) + 10;
+  const x = (v: number) => ((v - x0) / (x1 - x0)) * W;
+  const y = (v: number) => H - ((v - y0) / (y1 - y0)) * H;
+  return (
+    <figure className="chart">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`${points.length} weeks of ride fitness against best 20-minute power`}
+      >
+        <line
+          x1={x(x0)}
+          x2={x(x1)}
+          y1={y(line.a + line.b * x0)}
+          y2={y(line.a + line.b * x1)}
+          stroke="rgba(255,255,255,.5)"
+          strokeDasharray="4 4"
+          vectorEffect="non-scaling-stroke"
+        />
+        {points.map((p) => (
+          <circle
+            key={`${p.ctl}-${p.power}`}
+            cx={x(p.ctl)}
+            cy={y(p.power)}
+            r={2.4}
+            fill="var(--form)"
+            fillOpacity={0.7}
+          />
+        ))}
+        {today && <circle cx={x(today.ctl)} cy={y(today.power)} r={4.5} fill="#fff" />}
+      </svg>
+      <div className="axis">
+        <span>fitness {Math.round(x0 + 2)}</span>
+        <span>
+          {Math.round(y0 + 10)}–{Math.round(y1 - 10)} W
+        </span>
+        <span>{Math.round(x1 - 2)}</span>
+      </div>
+    </figure>
   );
 }

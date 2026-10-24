@@ -1,8 +1,15 @@
+import { count, isNotNull } from "drizzle-orm";
+import { db } from "@/db/client";
+import { night } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { orNothing } from "@/lib/nights";
 import { type Activity, loadPerHour, powerVsFitness, rideCtlByDay } from "@/lib/outlook";
+import { calibrate, hrVo2Series, type Run, volumeBefore } from "@/lib/potential";
+import { bestVdot, raceInfo } from "@/lib/races";
+import { at, HOUR, type PaceCurve } from "@/lib/records";
 import type { PlanEvent } from "@/lib/today";
+import { mondayOf } from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Curve = { start_date_local: string; secs?: number[]; watts?: number[] };
@@ -10,7 +17,9 @@ type Curve = { start_date_local: string; secs?: number[]; watts?: number[] };
 const DAY = 24 * 3600;
 /** Power history starts in 2025; ride fitness needs ~150 days of loads before that. */
 const POWER_FROM = "2025-01-06";
-const LOADS_FROM = "2024-08-01";
+/** Loads and runs since 2023: heart rate on runs starts then (the potential model's history). */
+const LOADS_FROM = "2023-01-01";
+const RUN_DISTANCES = [5000, 10000, 21097.5, 42195];
 
 /** Weekly best 20-min power (Mon–Sun) since POWER_FROM, 13 weeks per call, cached a day. */
 async function weeklyBest20(until: string) {
@@ -41,32 +50,52 @@ async function weeklyBest20(until: string) {
 
 export async function loadOutlook() {
   const date = today();
-  const [wellness, events, activities, weeks] = await Promise.all([
+  const [wellness, events, activities, weeks, athlete, pace, [hrv]] = await Promise.all([
     orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
     orNothing(
-      intervals<PlanEvent[]>(`/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 120)}`),
+      intervals<PlanEvent[]>(
+        `/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 365)}`,
+        HOUR,
+      ),
       [],
     ),
     orNothing(
-      intervals<Activity[]>(
-        `/activities?oldest=${LOADS_FROM}&newest=${date}&fields=start_date_local,type,icu_training_load,moving_time`,
+      intervals<(Activity & Run)[]>(
+        `/activities?oldest=${LOADS_FROM}&newest=${date}&fields=start_date_local,type,icu_training_load,moving_time,distance,average_heartrate`,
         { next: { revalidate: 3600 } },
       ),
       [],
     ),
     // Weeks are Mondays from POWER_FROM: up to a week ago means only finished weeks.
     weeklyBest20(addDays(date, -7)),
+    orNothing(intervals<{ sportSettings?: { types?: string[]; max_hr?: number }[] }>(""), {}),
+    orNothing(intervals<{ list: PaceCurve[] }>("/pace-curves.json?type=Run&curves=all", HOUR), {
+      list: [],
+    }),
+    db().select({ n: count() }).from(night).where(isNotNull(night.hrv)),
   ]);
   const w = wellness[0];
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -84));
   const rideCtl = rideCtlByDay(activities, date);
-  const race = events
+  const races = events
     .filter((e) => e.category.startsWith("RACE"))
-    .sort(
-      (a, b) =>
-        a.category.localeCompare(b.category) ||
-        a.start_date_local.localeCompare(b.start_date_local),
-    )[0];
+    .sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
+    .map((e) => ({ ...e, info: raceInfo(e) }));
+
+  // Running potential: HR-based fitness now, calibrated so your fittest stretch = your best VDOT.
+  const runs = activities.filter((a) => /run/i.test(a.type ?? ""));
+  const hrMax = athlete.sportSettings?.find((x) => x.types?.includes("Run"))?.max_hr ?? 0;
+  const all = pace.list[0];
+  const pbTimes = RUN_DISTANCES.map((d) => at(all?.distance, all?.values, d));
+  const pbVdot = bestVdot(RUN_DISTANCES.map((d, i) => ({ distance: d, secs: pbTimes[i] })));
+  const series = hrMax && pbVdot ? calibrate(hrVo2Series(runs, hrMax), pbVdot) : [];
+  const last = series.at(-1);
+  // Your fittest stretch: the volume and pace you were running then anchor race-day potential.
+  const peak = series.reduce<(typeof series)[number] | undefined>(
+    (b, p) => (!b || p.vdot > b.vdot ? p : b),
+    undefined,
+  );
+  const runNow = volumeBefore(runs, date);
   return {
     date,
     // Undefined when intervals.icu didn't answer: shown as "no data", never projected from 0.
@@ -77,7 +106,23 @@ export async function loadOutlook() {
     rideRate: loadPerHour(recent, "ride", 50),
     runRate: loadPerHour(recent, "run", 60),
     workouts: events.filter((e) => e.category === "WORKOUT"),
-    race,
+    races,
+    race: races[0],
+    hrvNights: hrv?.n ?? 0,
+    potential: {
+      // Stale after 30 days without a qualifying run: then there's no "now".
+      now: last && last.date >= addDays(date, -30) ? last.vdot : undefined,
+      pbVdot,
+      pbTimes,
+      weeklyKm: runNow.weeklyKm,
+      anchor: peak && pbVdot ? { vdot: pbVdot, ...volumeBefore(runs, peak.date) } : undefined,
+      // Weekly HR-based VDOT for the trend line (last 52 weeks).
+      trend: [
+        ...new Map(
+          series.filter((p) => p.date >= addDays(date, -364)).map((p) => [mondayOf(p.date), p]),
+        ).values(),
+      ],
+    },
     power: powerVsFitness(weeks, rideCtl),
     recentBest20: Math.max(0, ...weeks.slice(-6).map((x) => x.best20 ?? 0)),
   };

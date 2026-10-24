@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { log } from "@/db/schema";
+import { corosConnected } from "@/lib/coros/auth";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
@@ -47,7 +48,7 @@ export function profile(steps: Step[] = [], ftp = 0): [number, number][] {
 /** Everything the Today screen shows, fetched in parallel. */
 export async function loadToday() {
   const date = today();
-  const [{ nights, lastNight }, wellness, events, athlete, [lastSync], activities] =
+  const [{ nights, lastNight }, wellness, events, athlete, [lastSync], activities, connected] =
     await Promise.all([
       loadNights(date, 70),
       orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
@@ -60,6 +61,7 @@ export async function loadToday() {
         ),
         [],
       ),
+      corosConnected(),
     ]);
   const w = wellness.find((x) => x.id === date);
   const tsb = tsbOf(w);
@@ -77,5 +79,6 @@ export async function loadToday() {
     notes: events.filter((e) => e.category === "NOTE" && e.start_date_local.startsWith(date)),
     lastSync,
     volume: weeklyVolume(activities, date),
+    corosConnected: connected,
   };
 }

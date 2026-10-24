@@ -1,96 +1,189 @@
-import { addDays, daysBetween, weekday } from "@/lib/date";
-import { clampCtl, formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
+import { addDays, daysBetween, shortDate } from "@/lib/date";
+import { hmm } from "@/lib/format";
+import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
-import { Forecast } from "../charts";
+import { loadRaceExtras } from "@/lib/races-load";
+import { SPORT_COLOR, sportOf } from "@/lib/volume";
+import { Scatter } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
+import { Potential } from "./Potential";
 import { WhatIf } from "./WhatIf";
 
-function RaceDayForm({
-  form,
-  ctl,
-  race,
-}: {
-  form: number;
-  ctl: number;
-  race: Parameters<typeof formTarget>[0];
-}) {
-  const target = formTarget(race);
-  return (
-    <p className="say">
-      Race-day form {Math.round(form)}% (fitness {Math.round(ctl)}).{" "}
-      {!target
-        ? "Add the race distance or duration in intervals.icu to get a taper target."
-        : `Target ${target.low} to +${target.high}%: ${target.why}. ${
-            form < target.low
-              ? "Lighten the final week."
-              : form > target.high
-                ? "You'd arrive flat: keep some load in the final week."
-                : "On target."
-          }`}
-    </p>
-  );
-}
+const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
+const SPORT_TINT = {
+  run: "var(--go)",
+  ride: "var(--form)",
+  tri: "var(--hrv)",
+  other: "rgba(255,255,255,.45)",
+};
 
 export default async function OutlookPage() {
-  const o = await loadOutlook();
-  const raceDate = o.race?.start_date_local.slice(0, 10);
-  const end = raceDate ?? addDays(o.date, 56);
-  const horizon = daysBetween(o.date, end);
-  // Only workouts inside the projected window count, from tomorrow on: today's is in today's fitness.
-  const workouts = o.workouts.filter((w) => w.start_date_local.slice(0, 10) <= end);
+  const [o, x] = await Promise.all([loadOutlook(), loadRaceExtras()]);
+  const next = o.race;
+  const runRace = o.races.find((r) => r.info.sport === "run" && r.info.metres);
+  const known = o.ctl !== undefined && o.atl !== undefined;
+
+  // Planned hours per week for the next 8 weeks, by sport.
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const from = addDays(o.date, i * 7 + 1);
+    const to = addDays(from, 6);
+    const ws = o.workouts.filter((w) => {
+      const d = w.start_date_local.slice(0, 10);
+      return d >= from && d <= to;
+    });
+    return {
+      from,
+      hours: ws.map((w) => ({ id: w.id, sport: sportOf(w.type), h: (w.moving_time ?? 0) / 3600 })),
+    };
+  });
+  const planned = weeks.some((w) => w.hours.length);
+  const maxH = Math.max(1, ...weeks.map((w) => w.hours.reduce((s, h) => s + h.h, 0)));
+
+  // Race-day form from the plan, for the next race, when there is a plan.
+  const raceDate = next?.start_date_local.slice(0, 10);
+  const horizon = raceDate ? daysBetween(o.date, raceDate) : 0;
   const loads = Array.from({ length: horizon }, (_, i) =>
-    workouts
+    o.workouts
       .filter((w) => w.start_date_local.startsWith(addDays(o.date, i + 1)))
       .reduce((s, w) => s + (w.icu_training_load ?? 0), 0),
   );
-  const known = o.ctl !== undefined && o.atl !== undefined;
-  const plan = known ? projectFitness(o.date, o.ctl as number, o.atl as number, loads) : [];
-  const raceDay = raceDate ? plan.find((d) => d.date === raceDate) : undefined;
-  const thin = workouts.length / Math.max(1, horizon / 7) < 2;
-  const word = raceDate ? `${horizon} ${horizon === 1 ? "day" : "days"}` : "No race";
+  const plan =
+    known && planned && raceDate
+      ? projectFitness(o.date, o.ctl as number, o.atl as number, loads)
+      : [];
+  const raceDay = plan.find((d) => d.date === raceDate);
+  const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
+  const corosTimes = x.coros
+    ? [x.coros.k5, x.coros.k10, x.coros.half, x.coros.marathon]
+    : undefined;
 
   return (
     <Sky state="go">
-      <Hero place="Outlook" word={word} sub={o.race?.name ?? "Add a race in intervals.icu"}>
-        <div className="cond">
-          {o.race
-            ? `to ${o.race.name ?? "your race"} · ${weekday(raceDate as string)} ${raceDate?.slice(5)}`
-            : "No A, B or C race in the next 120 days"}
-        </div>
-        <div className="hl num">
-          {known
-            ? `Fitness ${Math.round(o.ctl as number)} · Form ${Math.round((o.ctl as number) - (o.atl as number))}`
-            : "No fitness data from intervals.icu right now"}
-        </div>
+      <Hero
+        place="Outlook"
+        word={next ? `${horizon} days` : "No race"}
+        sub={next?.name ?? "Add a race in intervals.icu"}
+      >
+        <div className="verdict">{next ? next.name : "Add a race in intervals.icu"}</div>
+        {next && (
+          <div className="hl num">
+            {next.info.label} <span>· {shortDate(next.start_date_local)}</span>
+          </div>
+        )}
       </Hero>
 
-      <Module title={o.race ? "Your plan to race day" : "Your plan · next 8 weeks"}>
-        <div className="mod-b">
-          {workouts.length === 0 || !known ? (
-            <p className="say dim" style={{ marginTop: 0 }}>
-              {known
-                ? "Nothing planned in intervals.icu for this period. Use the what-if below, or add workouts."
-                : "Fitness data is missing, so there's nothing to project from."}
+      {o.races.length > 1 && (
+        <Module title="Races ahead">
+          <ul className="races">
+            {o.races.map((r) => (
+              <li key={r.id}>
+                <span className="race-days num">
+                  <b>{daysBetween(o.date, r.start_date_local.slice(0, 10))}</b>
+                  <small>days</small>
+                </span>
+                <span className="what">
+                  <b>{r.name}</b>
+                  <small>
+                    {shortDate(r.start_date_local)} · {r.info.label}
+                  </small>
+                </span>
+                <span className="prio" style={{ background: SPORT_TINT[r.info.sport] }}>
+                  {PRIORITY[r.category] ?? "·"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Module>
+      )}
+
+      <Module
+        title="Running potential"
+        value={o.potential.now ? `VDOT ${o.potential.now.toFixed(1)}` : undefined}
+        info={
+          <>
+            <p>
+              Now: your fitness from heart rate against pace on recent runs (Runalyze's method),
+              scaled so your fittest stretch matches your best performances (VDOT{" "}
+              {o.potential.pbVdot?.toFixed(1) ?? "–"}). Easy runs say less than a hard effort, so
+              it's shown ±5 %.
             </p>
-          ) : (
-            <>
-              <Forecast days={plan} race={raceDate} />
-              {raceDay && o.race && (
-                <RaceDayForm form={formPct(raceDay)} ctl={raceDay.ctl} race={o.race} />
-              )}
-              <p className="say dim">
-                If you do exactly what's planned from tomorrow; unplanned days count as rest.
-                {thin ? " The plan is thin (under 2 workouts a week), so this runs low." : ""}
-              </p>
-            </>
-          )}
+            <p>
+              Race day: what the weekly distance you choose supports (Tanda 2011, from weekly km and
+              training pace, about 5 min error on a marathon), reached over the weeks left with a
+              ~10-week time constant. That last part is a heuristic: no validated retraining curve
+              exists. Shown ±6 %.
+            </p>
+            <p>
+              White ticks: your all-time bests. Grey dots: COROS's own prediction. Your recent
+              running: {o.potential.weeklyKm.toFixed(1)} km/week.
+            </p>
+          </>
+        }
+      >
+        <div className="mod-b">
+          <Potential
+            now={o.potential.now}
+            pbTimes={o.potential.pbTimes}
+            coros={corosTimes}
+            anchor={o.potential.anchor}
+            weeklyKm={o.potential.weeklyKm}
+            weeks={runRace ? daysBetween(o.date, runRace.start_date_local.slice(0, 10)) / 7 : 12}
+            race={runRace ? { label: runRace.info.label, metres: runRace.info.metres } : undefined}
+          />
         </div>
       </Module>
 
+      <Module title="Next 8 weeks" value={planned ? undefined : "nothing planned"}>
+        {planned ? (
+          <div className="mod-b">
+            <div className="weekstrip" role="img" aria-label="Planned hours per week by sport">
+              {weeks.map((w) => (
+                <div key={w.from} className="wk-col">
+                  <div className="wk-bar">
+                    {w.hours.map((h) => (
+                      <i
+                        key={h.id}
+                        style={{
+                          height: `${(h.h / maxH) * 100}%`,
+                          background: SPORT_COLOR[h.sport],
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <small className="num">{hmm(w.hours.reduce((s, h) => s + h.h, 0) * 3600)}</small>
+                </div>
+              ))}
+            </div>
+            {raceDay && target && (
+              <div className="caption">
+                Race-day form {Math.round(formPct(raceDay))}% · target {target.low}–{target.high}%
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Module>
+
       {known && (
-        <Module title="What if">
+        <Module
+          title="What if"
+          info={
+            <>
+              <p>
+                A scenario, not a forecast: fitness and form if you train exactly this, from today's
+                numbers.
+              </p>
+              <p>
+                It uses {o.rideRate.typical ? "a typical" : "your recent"}{" "}
+                {Math.round(o.rideRate.rate)} load/h riding and{" "}
+                {o.runRate.typical ? "a typical" : "your recent"} {Math.round(o.runRate.rate)}{" "}
+                load/h running. The 20-min range is what you typically rode at that ride fitness (8
+                of 10 weeks inside it), not a test result.
+              </p>
+            </>
+          }
+        >
           <div className="mod-b">
             <WhatIf
               date={o.date}
@@ -105,40 +198,37 @@ export default async function OutlookPage() {
         </Module>
       )}
 
-      <Module title="20-min power vs ride fitness">
-        <div className="mod-b">
-          {o.power ? (
-            <>
-              <div className="stats num">
-                <span>
-                  <b>{Math.round(o.recentBest20)} W</b>best, last 6 weeks
-                </span>
-                <span>
-                  <b>{Math.round(powerAt(o.power, o.rideCtl))} W</b>typical at ride fitness{" "}
-                  {Math.round(clampCtl(o.power, o.rideCtl))}
-                </span>
-              </div>
-              <p className="say dim">
-                From {o.power.n} weekly windows since 2025: +{o.power.b.toFixed(1)} W per point of
-                ride fitness, ±{Math.round(o.power.p80 * 100)}% for 8 of 10 weeks. These are
-                training bests, not tests; a real 20-min effort or race would sharpen it. Not your
-                FTP.
-              </p>
-            </>
-          ) : (
-            <p className="say dim" style={{ marginTop: 0 }}>
-              Needs 8 weeks of rides with power to relate your power to fitness.
+      {o.power && (
+        <Module
+          title="20-min power vs fitness"
+          value={`${Math.round(o.recentBest20)} W now`}
+          info={
+            <p>
+              Each dot is a week since 2025: your best 20-min power over the 6 weeks before it
+              against your ride fitness. Line: +{o.power.b.toFixed(1)} W per point of fitness, ±
+              {Math.round(o.power.p80 * 100)} % for 8 of 10 weeks. White: today (
+              {Math.round(powerAt(o.power, o.rideCtl))} W typical at fitness {Math.round(o.rideCtl)}
+              ). Training bests, not tests; not your FTP.
             </p>
-          )}
-        </div>
-      </Module>
+          }
+        >
+          <div className="mod-b">
+            <Scatter
+              points={o.power.points}
+              line={o.power}
+              today={{ ctl: o.rideCtl, power: o.recentBest20 }}
+            />
+          </div>
+        </Module>
+      )}
 
-      <Module title="Recovery response">
-        <div className="mod-b">
-          <p className="say dim" style={{ marginTop: 0 }}>
-            Building. How your HRV and resting HR react to big days needs about 8 weeks of COROS
-            nights; the first ones came on 1 Oct.
-          </p>
+      <Module title="Recovery response" value={`${Math.min(o.hrvNights, 56)} of 56 nights`}>
+        <div className="mod-b recovery">
+          <span
+            className="ring"
+            style={{ "--p": Math.min(1, o.hrvNights / 56) } as React.CSSProperties}
+          />
+          <span className="caption">Learning how your HRV reacts to big days</span>
         </div>
       </Module>
     </Sky>

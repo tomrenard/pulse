@@ -1,48 +1,39 @@
-import { MIN_NIGHTS, midpointSpreadMin, WORD } from "@/lib/readiness";
+import { rhrNormal, WORD } from "@/lib/readiness";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
 import { Sky } from "./Sky";
-import { FormTile, HrvList, PlanStrip, RhrTile, SleepTile, StressTile, Workout } from "./Today";
-import { hm } from "./ui";
+import { HrvList, Signals, Workout } from "./Today";
 import { Volume } from "./Volume";
+
+const time = (d: Date) =>
+  d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 export default async function TodayPage() {
   const t = await loadToday();
   const { ready } = t;
-  const word = WORD[ready.state];
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
-  const cond = ready.stale
+  // One line: what matters today. The signal tiles below show where it comes from.
+  const flagged = ready.reasons.find((r) => r.flag)?.label;
+  const verdict = ready.stale
     ? "Too few nights this week to judge"
     : ready.state === "building"
-      ? `Building your baseline · ${ready.nights} of ${MIN_NIGHTS} nights`
-      : `${ready.reasons[0]?.label} · slept ${hm(t.lastNight?.asleepSecs)}`;
-  const spread = midpointSpreadMin(t.nights.slice(-7));
+      ? `Learning your normal · ${ready.nights} of 14 nights`
+      : (flagged ?? "All signals in range") + (ready.provisional ? " · early read" : "");
+  const syncFailed = t.lastSync?.detail?.startsWith("error");
   return (
     <Sky state={ready.state}>
-      <Hero
-        place={place}
-        word={word}
-        sub={ready.hrv7 ? `HRV ${Math.round(ready.hrv7)} ms · 7-night` : cond}
-      >
-        <div className="cond">{cond}</div>
-        <div className="hl num">
-          RHR {t.lastNight?.rhr ?? "–"} <span>·</span> Form{" "}
-          {t.tsb === undefined ? "–" : Math.round(t.tsb)}
-          {ready.provisional && ready.state !== "building" ? <span> · provisional</span> : null}
-        </div>
-        {ready.reasons.length > 0 && (
-          <div className="chips">
-            {ready.reasons.map((r) => (
-              <span key={r.key} className={`chip${r.flag ? " flag" : ""}`}>
-                {r.label}
-              </span>
-            ))}
-          </div>
-        )}
+      <Hero place={place} word={WORD[ready.state]} sub={verdict}>
+        <div className="verdict">{verdict}</div>
+        {t.lastSync && !syncFailed && <div className="synced">Synced {time(t.lastSync.at)}</div>}
       </Hero>
-      <Volume weeks={t.volume} href="/training" />
-      <PlanStrip date={t.date} plan={t.plan} />
+      <Signals
+        hrv7={ready.hrv7}
+        hrvNormal={ready.normal}
+        last={t.lastNight}
+        rhr={rhrNormal(t.nights, t.date)}
+        tsb={t.tsb}
+      />
       <Workout
         event={t.plan.find(
           (e) => e.start_date_local.startsWith(t.date) && e.category === "WORKOUT",
@@ -50,14 +41,10 @@ export default async function TodayPage() {
         notes={t.notes}
         ftp={t.ftp}
       />
+      <Volume weeks={t.volume} href="/training" />
       <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
-      <div className="tiles">
-        <SleepTile nights={t.nights} last={t.lastNight} spread={spread} />
-        <RhrTile nights={t.nights} last={t.lastNight} date={t.date} />
-        <StressTile last={t.lastNight} />
-        <FormTile ctl={t.ctl} atl={t.atl} tsb={t.tsb} />
-      </div>
-      <CorosCard lastSync={t.lastSync} />
+      {/* The COROS card only when something needs you: not connected, or the sync broke. */}
+      {(!t.corosConnected || syncFailed) && <CorosCard lastSync={t.lastSync} />}
     </Sky>
   );
 }
