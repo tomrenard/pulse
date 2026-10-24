@@ -1,16 +1,9 @@
 import type { Badge } from "@/lib/badges";
+import { clock as time } from "@/lib/format";
 import { loadRecords, WINDOWS } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
-
-const time = (secs?: number) => {
-  if (!secs) return "–";
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = String(Math.round(secs % 60)).padStart(2, "0");
-  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
-};
 
 function Table({
   rows,
@@ -63,7 +56,7 @@ function LevelCard({ sport, pb, now }: { sport: "run" | "ride"; pb: Level; now: 
         <div className="say dim">{best.real}</div>
         {best.beats !== undefined && (
           <div className="say">
-            Faster than ~{best.beats}% of{" "}
+            Faster than {best.beats} of{" "}
             {sport === "run" ? "male race finishers" : "men 25–34 who train"}
           </div>
         )}
@@ -135,10 +128,13 @@ export default async function RacesPage() {
             })}
             <p className="say dim">
               Your best run as an age grade, your best ride as W/kg against Coggan's world-class
-              6.4. On this scale 60% is local class, 70% regional, 80% national, 90% world class.{" "}
-              {(r.pb.run?.pct ?? 0) > (r.pb.ride?.pct ?? 0)
-                ? "Running is your stronger side."
-                : "Riding is your stronger side."}
+              6.4. For running, 60% is local class, 70% regional, 80% national, 90% world class;
+              Coggan's riding categories only roughly line up with that.{" "}
+              {Math.abs((r.pb.run?.pct ?? 0) - (r.pb.ride?.pct ?? 0)) < 3
+                ? "Both sides are about even."
+                : (r.pb.run?.pct ?? 0) > (r.pb.ride?.pct ?? 0)
+                  ? "Running is your stronger side."
+                  : "Riding is your stronger side."}
             </p>
           </div>
         </Module>

@@ -35,6 +35,10 @@ const RIDE_BANDS: [number, string, string][] = [
 ];
 const COGGAN_TOP = 6.4;
 
+/** Highest band whose lower bound you reach; every list ends at 0, so one always matches. */
+const bandOf = (bands: [number, string, string][], v: number) =>
+  bands.find(([min]) => v >= min) as [number, string, string];
+
 /** Best age grade across distances (the distance you're strongest at). */
 export function runGrade(
   times: { distance: number; secs?: number }[],
@@ -45,8 +49,7 @@ export function runGrade(
   });
   const best = graded.sort((a, b) => b.pct - a.pct)[0];
   if (!best) return undefined;
-  const [, name, band] =
-    RUN_BANDS.find(([min]) => best.pct >= min) ?? (RUN_BANDS.at(-1) as [number, string, string]);
+  const [, name, band] = bandOf(RUN_BANDS, best.pct);
   return { ...best, name, real: `age-graded ${best.pct.toFixed(1)} % · ${band}` };
 }
 
@@ -54,14 +57,10 @@ export function runGrade(
 export const ftpOf = (best20?: number, best60?: number) =>
   Math.max(best60 ?? 0, (best20 ?? 0) * 0.95) || undefined;
 
-export function rideGrade(
-  ftp: number | undefined,
-  kg: number,
-): (Grade & { wkg: number }) | undefined {
-  if (!ftp || !kg) return undefined;
-  const wkg = ftp / kg;
-  const [, name, band] =
-    RIDE_BANDS.find(([min]) => wkg >= min) ?? (RIDE_BANDS.at(-1) as [number, string, string]);
+/** `wkg`: FTP in W/kg, from best efforts weighed at the time of each effort. */
+export function rideGrade(wkg: number | undefined): (Grade & { wkg: number }) | undefined {
+  if (!wkg) return undefined;
+  const [, name, band] = bandOf(RIDE_BANDS, wkg);
   return {
     wkg,
     pct: (wkg / COGGAN_TOP) * 100,
@@ -70,20 +69,27 @@ export function rideGrade(
   };
 }
 
-/** Linear interpolation over [value, % of field slower] points; clamped at the ends. */
-function percentile(points: [number, number][], v: number) {
-  const sorted = [...points].sort((a, b) => a[0] - b[0]);
-  const first = sorted[0] as [number, number];
-  const last = sorted.at(-1) as [number, number];
-  if (v <= first[0]) return first[1];
-  if (v >= last[0]) return last[1];
-  for (let i = 1; i < sorted.length; i++) {
-    const [x1, y1] = sorted[i] as [number, number];
-    const [x0, y0] = sorted[i - 1] as [number, number];
-    if (v <= x1) return y0 + ((v - x0) / (x1 - x0)) * (y1 - y0);
-  }
-  return last[1];
+/**
+ * Share of the field you beat, from points [value, % beaten] in ascending value order.
+ * Inside the table: interpolated ("~63"). Past either end: only a bound ("more than 90",
+ * "under 25"), since the data says nothing finer there.
+ */
+function beats(points: [number, number][], v: number) {
+  const first = points[0] as [number, number];
+  const last = points.at(-1) as [number, number];
+  if (v <= first[0]) return { pct: first[1], edge: "low" as const };
+  if (v >= last[0]) return { pct: last[1], edge: "high" as const };
+  const i = points.findIndex(([x]) => v <= x);
+  const [x0, y0] = points[i - 1] as [number, number];
+  const [x1, y1] = points[i] as [number, number];
+  return { pct: Math.round(y0 + ((v - x0) / (x1 - x0)) * (y1 - y0)), edge: undefined };
 }
+
+export type Beats = ReturnType<typeof beats>;
+
+/** "more than 90%", "under 25%" or "~63%". */
+export const beatsText = (b: Beats) =>
+  b.edge === "high" ? `more than ${b.pct}%` : b.edge === "low" ? `under ${b.pct}%` : `~${b.pct}%`;
 
 /** RunRepeat men, all ages: finish time (s) at the fastest 10 / 20 / 50 / 80 / 90 %. */
 const RUNREPEAT: Record<number, number[]> = {
@@ -93,37 +99,23 @@ const RUNREPEAT: Record<number, number[]> = {
   42195: [12160, 13213, 15269, 17733, 19526],
 };
 
-/** Share of race finishers (men) slower than this time; approximate, capped at 1–99 %. */
+/** Share of male race finishers slower than this time (approximate). */
 export function runBeats(distance: number, secs: number) {
   const t = RUNREPEAT[distance];
   if (!t) return undefined;
+  // Slower time beats fewer people: use −time so values ascend with the share beaten.
   const slower = [90, 80, 50, 20, 10];
-  const pct = percentile(
-    t.map((x, i) => [x, slower[i] as number]),
-    secs,
-  );
-  // Faster than the top-10 % time: extrapolate towards 99 % rather than claiming exactly 90.
-  const fast = secs < (t[0] as number) ? 90 + (1 - secs / (t[0] as number)) * 40 : pct;
-  return Math.min(99, Math.max(1, Math.round(fast)));
+  return beats(t.map((x, i) => [-x, slower[i] as number] as [number, number]).reverse(), -secs);
 }
 
 /** Roadman men 25–34 who train: FTP W/kg at the 25 / 50 / 75 / 90th percentile. */
-export function rideBeats(wkg: number) {
-  return Math.min(
-    99,
-    Math.max(
-      1,
-      Math.round(
-        percentile(
-          [
-            [2.7, 25],
-            [3.3, 50],
-            [4.0, 75],
-            [4.7, 90],
-          ],
-          wkg,
-        ),
-      ),
-    ),
+export const rideBeats = (wkg: number) =>
+  beats(
+    [
+      [2.7, 25],
+      [3.3, 50],
+      [4.0, 75],
+      [4.7, 90],
+    ],
+    wkg,
   );
-}

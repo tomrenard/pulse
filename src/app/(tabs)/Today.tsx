@@ -2,6 +2,7 @@ import type { night } from "@/db/schema";
 import { addDays, weekday } from "@/lib/date";
 import { MIN_NIGHTS, rhrNormal, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
+import { sportOf } from "@/lib/volume";
 import { Gauge, hm, Module } from "./ui";
 
 type Night = typeof night.$inferSelect & { tagged?: boolean };
@@ -31,8 +32,6 @@ const SPORT: Record<string, React.ReactNode> = {
   rest: <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />,
   other: <circle cx="12" cy="12" r="6" />,
 };
-const sportOf = (type = "") =>
-  /ride/i.test(type) ? "ride" : /run/i.test(type) ? "run" : /swim/i.test(type) ? "swim" : "other";
 
 function Icon({ sport }: { sport: string }) {
   return (

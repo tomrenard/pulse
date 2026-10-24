@@ -1,7 +1,9 @@
 import { addDays } from "./date.ts";
 
-export type Sport = "ride" | "run" | "swim" | "other";
-export const SPORTS: Sport[] = ["ride", "run", "swim", "other"];
+export const SPORTS = ["ride", "run", "swim", "other"] as const;
+export type Sport = (typeof SPORTS)[number];
+/** Weeks shown in the volume chart. */
+export const WEEKS = 12;
 
 export type VolumeActivity = {
   start_date_local: string;
@@ -24,7 +26,7 @@ export const mondayOf = (date: string) => {
 };
 
 /** Weekly totals per sport for the `weeks` weeks ending with the current one (Mon–Sun). */
-export function weeklyVolume(activities: VolumeActivity[], today: string, weeks = 12) {
+export function weeklyVolume(activities: VolumeActivity[], today: string, weeks = WEEKS) {
   const first = addDays(mondayOf(today), -7 * (weeks - 1));
   const out = Array.from({ length: weeks }, (_, i) => ({
     monday: addDays(first, i * 7),
@@ -32,7 +34,6 @@ export function weeklyVolume(activities: VolumeActivity[], today: string, weeks 
   }));
   for (const a of activities) {
     const day = a.start_date_local.slice(0, 10);
-    if (day < first || day > today) continue;
     const week = out[Math.floor((Date.parse(day) - Date.parse(first)) / (7 * 864e5))];
     if (!week) continue;
     const t = week.sports[sportOf(a.type)];

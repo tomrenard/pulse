@@ -1,4 +1,5 @@
 import { addDays } from "./date.ts";
+import { hmm } from "./format.ts";
 import { mondayOf, sportOf } from "./volume.ts";
 
 export type BadgeActivity = {
@@ -18,8 +19,6 @@ export type Badge = {
 };
 
 const km = (m: number) => Math.round(m / 1000).toLocaleString("en-GB");
-const hours = (s: number) =>
-  `${Math.floor(s / 3600)}h${String(Math.round((s % 3600) / 60)).padStart(2, "0")}`;
 
 /** Fun milestones from the activity list and run bests. `goalKm` is the A-race distance. */
 export function badges(
@@ -59,11 +58,12 @@ export function badges(
   const centuries = rides.filter((a) => (a.distance ?? 0) >= 100_000).length;
   const sub = (distance: number, limit: number, label: string) => {
     const secs = runBest.find((r) => r.distance === distance)?.secs;
+    const done = Boolean(secs && secs < limit);
     return {
       title: label,
-      value: secs && secs < limit ? "Done" : "Not yet",
+      value: done ? "Done" : "Not yet",
       detail: "best effort, any run",
-      earned: Boolean(secs && secs < limit),
+      earned: done,
     };
   };
   return [
@@ -76,7 +76,7 @@ export function badges(
     },
     {
       title: "Biggest week",
-      value: hours(big.secs),
+      value: hmm(big.secs),
       detail: bigMonday ? `week of ${bigMonday}` : "",
       earned: big.secs >= 15 * 3600,
     },
@@ -89,7 +89,7 @@ export function badges(
     {
       title: `Everest ${year}`,
       value: `${(climbed / 8848).toFixed(1)}×`,
-      detail: `${km(climbed * 1000)} m climbed this year`,
+      detail: `${Math.round(climbed).toLocaleString("en-GB")} m climbed this year`,
       earned: climbed >= 8848,
       progress: Math.min(1, (climbed % 8848) / 8848),
     },

@@ -1,9 +1,6 @@
 /** Building blocks shared by the tabs. */
 
-export const hm = (secs?: number | null) =>
-  secs
-    ? `${Math.floor(secs / 3600)}h ${String(Math.round((secs % 3600) / 60)).padStart(2, "0")}m`
-    : "–";
+export { hm } from "@/lib/format";
 
 /** A Weather-style module: small uppercase header, then content. */
 export function Module({

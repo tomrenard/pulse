@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { hmm } from "@/lib/format";
 import { SPORTS, type Sport, type Totals } from "@/lib/volume";
 
 const COLOR: Record<Sport, string> = {
@@ -19,7 +20,7 @@ type Measure = (typeof MEASURES)[number][0];
 
 const fmt = (m: Measure, v: number) =>
   m === "hours"
-    ? `${Math.floor(v)}h${String(Math.round((v % 1) * 60)).padStart(2, "0")}`
+    ? hmm(v * 3600)
     : m === "km"
       ? `${v < 10 ? v.toFixed(1) : Math.round(v)} km`
       : `${Math.round(v)}`;
@@ -62,7 +63,6 @@ export function Volume({ weeks }: { weeks: { monday: string; sports: Totals }[] 
           <svg
             viewBox={`0 0 300 ${H}`}
             preserveAspectRatio="none"
-            role="img"
             aria-hidden="true"
             style={{ height: H }}
           >

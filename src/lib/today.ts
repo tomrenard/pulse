@@ -5,7 +5,7 @@ import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
-import { mondayOf, type VolumeActivity, weeklyVolume } from "@/lib/volume";
+import { mondayOf, type VolumeActivity, WEEKS, weeklyVolume } from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Step = {
@@ -56,7 +56,7 @@ export async function loadToday() {
       db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
       orNothing(
         intervals<VolumeActivity[]>(
-          `/activities?oldest=${addDays(mondayOf(date), -77)}&newest=${date}&fields=start_date_local,type,moving_time,distance,icu_training_load`,
+          `/activities?oldest=${addDays(mondayOf(date), -7 * (WEEKS - 1))}&newest=${date}&fields=start_date_local,type,moving_time,distance,icu_training_load`,
         ),
         [],
       ),
