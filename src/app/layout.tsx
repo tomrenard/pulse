@@ -1,17 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { IPHONES } from "@/lib/iphones";
 import "./globals.css";
-
-// Launch screens for current iPhones: [CSS width, CSS height, pixel ratio].
-const IPHONES = [
-  [440, 956, 3],
-  [430, 932, 3],
-  [402, 874, 3],
-  [393, 852, 3],
-  [428, 926, 3],
-  [390, 844, 3],
-  [375, 812, 3],
-  [414, 896, 2],
-] as const;
 
 export const metadata: Metadata = {
   title: "pulse",

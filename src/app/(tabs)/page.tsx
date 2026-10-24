@@ -1,3 +1,4 @@
+import { today, weekday } from "@/lib/date";
 import { MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
 import { loadReview } from "@/lib/review-load";
 import { loadToday } from "@/lib/today";
@@ -13,10 +14,12 @@ const time = (d: Date) =>
   d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 export default async function TodayPage() {
-  const t = await loadToday();
   // Sunday and Monday only: the week just ending or just ended.
-  const day = new Date(`${t.date}T12:00:00Z`).getUTCDay();
-  const review = day === 0 || day === 1 ? await loadReview(t.date) : undefined;
+  const date = today();
+  const [t, review] = await Promise.all([
+    loadToday(),
+    ["Sun", "Mon"].includes(weekday(date)) ? loadReview(date) : undefined,
+  ]);
   const { ready } = t;
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
   // One line: what matters today. The signal tiles below show where it comes from.

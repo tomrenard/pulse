@@ -8,6 +8,10 @@ export const hm = (secs?: number | null) => {
   return `${Math.floor(m / 60)}h ${pad(m % 60)}m`;
 };
 
+/** "+3" / "−4 %" style: a signed whole number, "–" when missing. */
+export const signed = (v?: number, unit = "") =>
+  v === undefined ? "–" : `${v > 0 ? "+" : ""}${Math.round(v)}${unit}`;
+
 /** "4h05" compact style. */
 export const hmm = (secs: number) => {
   const m = Math.round(secs / 60);

@@ -1,5 +1,6 @@
 import { addDays } from "./date.ts";
 import { hrvNormal, ln7, type NightInput } from "./readiness.ts";
+import { mondayOf } from "./volume.ts";
 
 /**
  * The week in review: what was done against the plan, how fitness moved, where HRV went, and
@@ -13,12 +14,9 @@ import { hrvNormal, ln7, type NightInput } from "./readiness.ts";
  */
 
 /** The Sunday that ends the week to review: today on a Sunday, else last Sunday. */
-export function reviewSunday(date: string) {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  return addDays(date, -day);
-}
+export const reviewSunday = (date: string) => addDays(mondayOf(addDays(date, 1)), -1);
 
-export type ReviewInput = {
+type ReviewInput = {
   sunday: string;
   doneHours: number;
   plannedHours: number;
@@ -35,8 +33,9 @@ export function weeklyReview(r: ReviewInput) {
   const before = ln7(r.nights, addDays(r.sunday, -7));
   const normal = hrvNormal(r.nights, r.sunday);
   const hrvLow = now !== undefined && normal.lnLow !== undefined && now < normal.lnLow;
-  // Change of the 7-night HRV mean, in % (ln difference ≈ relative change).
-  const hrvTrend = now !== undefined && before !== undefined ? (now - before) * 100 : undefined;
+  // Change of the 7-night HRV mean (geometric, from ln means), in %.
+  const hrvTrend =
+    now !== undefined && before !== undefined ? Math.expm1(now - before) * 100 : undefined;
   const share = r.plannedHours > 0 ? r.doneHours / r.plannedHours : undefined;
 
   const suggestion = hrvLow

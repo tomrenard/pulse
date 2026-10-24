@@ -33,21 +33,26 @@ export function PushToggle() {
     setState("busy");
     const reg = await navigator.serviceWorker.ready;
     const current = await reg.pushManager.getSubscription();
-    if (current) {
-      await removePush(current.endpoint);
-      await current.unsubscribe();
-      setState("off");
-      return;
-    }
     try {
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: key(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string),
-      });
-      await savePush(sub.toJSON() as Parameters<typeof savePush>[0]);
-      setState("on");
+      if (current) {
+        // Browser first: a leftover server row is dropped by the next push (410).
+        await current.unsubscribe();
+        await removePush(current.endpoint);
+      } else {
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY as string),
+        });
+        // Not saved on the server = no pushes: don't leave the browser subscribed.
+        await savePush(sub.toJSON() as Parameters<typeof savePush>[0]).catch(async (e) => {
+          await sub.unsubscribe();
+          throw e;
+        });
+      }
     } catch {
-      setState("off"); // permission refused
+      // Permission refused or the server said no: the state below says where it landed.
+    } finally {
+      setState((await reg.pushManager.getSubscription()) ? "on" : "off");
     }
   };
   return (

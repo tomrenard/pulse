@@ -30,10 +30,19 @@ test("finds big days and the dip after them", () => {
   expect(r.nights).toBe(3);
 });
 
-test("back-to-back big days are left out, tagged nights don't count", () => {
+test("big days within 3 days of each other are both left out", () => {
+  const { loads, nights } = history();
+  const all = recoveryResponse(loads, nights).events;
+  // A second big day 2 days after each one: both of the pair drop out.
+  const paired = loads.map((d, i) => (i % 10 === 1 && i > 1 ? { ...d, load: 200 } : d));
+  expect(recoveryResponse(paired, nights).events).toBe(0);
+  expect(all).toBeGreaterThan(0);
+});
+
+test("tagged nights don't count", () => {
   const { loads, nights } = history();
   const r = recoveryResponse(
-    loads.map((d) => ({ ...d, load: 200 })),
+    loads,
     nights.map((n) => ({ ...n, tagged: true })),
   );
   expect(r.events).toBe(0);

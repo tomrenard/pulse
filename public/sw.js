@@ -26,7 +26,8 @@ self.addEventListener("fetch", (event) => {
         .open(ASSETS)
         .then(
           async (c) =>
-            (await c.match(req)) ?? fetch(req).then((res) => (c.put(req, res.clone()), res)),
+            (await c.match(req)) ??
+            fetch(req).then((res) => (res.ok && c.put(req, res.clone()), res)),
         ),
     );
     return;
@@ -54,12 +55,11 @@ self.addEventListener("push", (event) => {
       icon: "/apple-icon",
       badge: "/icon.svg",
       tag: "morning",
-      data: { url: data.url ?? "/" },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow(event.notification.data?.url ?? "/"));
+  event.waitUntil(self.clients.openWindow("/"));
 });

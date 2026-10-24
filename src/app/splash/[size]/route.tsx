@@ -1,9 +1,13 @@
 import { ImageResponse } from "next/og";
+import { SPLASH_SIZES } from "@/lib/iphones";
+
+// Built once at build time; any other size is a 404, so nobody can make the server render.
+export const dynamicParams = false;
+export const generateStaticParams = () => SPLASH_SIZES.map((size) => ({ size }));
 
 /** Launch screen for one iPhone size ("1179x2556"): the sky with the glass mark, as iOS shows it. */
 export async function GET(_: Request, { params }: { params: Promise<{ size: string }> }) {
-  const [w, h] = (await params).size.split("x").map(Number);
-  if (!w || !h || w > 1600 || h > 3000) return new Response("bad size", { status: 400 });
+  const [w = 0, h = 0] = (await params).size.split("x").map(Number);
   const mark = Math.round(w * 0.32);
   return new ImageResponse(
     <div

@@ -12,7 +12,6 @@ test("morning message: word, what matters, sleep and workout", () => {
   expect(morningMessage(base)).toEqual({
     title: "Ready · all signals in range",
     body: "Slept 8h 23m · Sweet spot 3×10 · 1h 30m",
-    url: "/",
   });
   const flagged = {
     ...base,

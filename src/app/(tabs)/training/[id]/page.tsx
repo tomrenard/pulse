@@ -52,12 +52,10 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   // Every 10th point is plenty for a phone-sized map.
   const route = thin(points, 10).filter(({ p }) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
   const line = route.map((r) => r.p);
-  const segments = zonesAlong
-    ? zoneSegments(
-        line,
-        route.map((r) => r.z),
-      )
-    : undefined;
+  const segments = zoneSegments(
+    line,
+    route.map((r) => r.z),
+  );
   // About 300 points for the chart.
   const step = Math.max(1, Math.ceil(time.length / 300));
   const chartPower = watts ? thin(smooth(watts, 30), step) : undefined;

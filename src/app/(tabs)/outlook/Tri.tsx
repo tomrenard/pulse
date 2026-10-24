@@ -1,18 +1,15 @@
+import { hmm } from "@/lib/format";
 import type { triSplit } from "@/lib/races";
 import { Module } from "../ui";
 
 type Split = ReturnType<typeof triSplit>;
 type Leg = Split["swim"];
 
-const hmin = (secs: number) => {
-  const m = Math.round(secs / 60);
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
-};
-/** "24–28 min" under an hour, "1:04–1:09" from there. */
+/** "24–28 min" under an hour, "1h04–1h09" from there. */
 const range = (l: { low: number; high: number }) =>
   l.high < 3600
     ? `${Math.round(l.low / 60)}–${Math.round(l.high / 60)} min`
-    : `${hmin(l.low)}–${hmin(l.high)}`;
+    : `${hmm(l.low)}–${hmm(l.high)}`;
 
 /** Leg-by-leg estimate for the next triathlon. */
 export function Tri({

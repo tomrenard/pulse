@@ -1,4 +1,5 @@
 import { shortDate } from "@/lib/date";
+import { hmm } from "@/lib/format";
 
 /** Hand-drawn SVG charts: a line with an optional normal band, and bars with a target line. */
 
@@ -356,9 +357,7 @@ export function StreamChart({
             </>
           ) : null}
         </span>
-        <span>
-          {Math.floor(end / 3600)}h{String(Math.round((end % 3600) / 60)).padStart(2, "0")}
-        </span>
+        <span>{hmm(end)}</span>
       </div>
     </figure>
   );

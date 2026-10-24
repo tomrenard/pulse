@@ -10,7 +10,7 @@ function configured() {
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const key = process.env.VAPID_PRIVATE_KEY;
   if (!pub || !key) return false;
-  webpush.setVapidDetails("mailto:pulse@localhost", pub, key);
+  webpush.setVapidDetails("https://pulse-eight-green.vercel.app", pub, key);
   return true;
 }
 
@@ -23,7 +23,6 @@ export function morningMessage(t: Awaited<ReturnType<typeof loadToday>>) {
   return {
     title: `${WORD[t.ready.state]} · ${flagged ?? "all signals in range"}`,
     body: `${t.lastNight?.asleepSecs ? `Slept ${hm(t.lastNight.asleepSecs)} · ` : ""}${workout}`,
-    url: "/",
   };
 }
 
@@ -45,6 +44,7 @@ export async function sendMorning() {
       const status = (error as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410)
         await db().delete(pushSub).where(eq(pushSub.endpoint, s.endpoint));
+      else console.error("push rejected", status, (error as { body?: string }).body);
     }
   }
   return sent;

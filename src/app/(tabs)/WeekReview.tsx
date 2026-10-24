@@ -1,10 +1,7 @@
 import { shortDate } from "@/lib/date";
-import { hmm } from "@/lib/format";
+import { hmm, signed } from "@/lib/format";
 import type { weeklyReview } from "@/lib/review";
 import { Module } from "./ui";
-
-const signed = (v?: number, unit = "") =>
-  v === undefined ? "–" : `${v > 0 ? "+" : ""}${Math.round(v)}${unit}`;
 
 /** Last week in four numbers and one suggestion. */
 export function WeekReview({ r }: { r: ReturnType<typeof weeklyReview> }) {

@@ -17,6 +17,11 @@ export async function GET(request: NextRequest) {
   const from = request.nextUrl.searchParams.get("from");
   const days = await syncCoros(from?.match(/^\d{4}-\d{2}-\d{2}$/) ? from : undefined);
   // The daily run (not a history re-pull) sends the morning notification once last night is in.
-  const pushed = from ? 0 : await sendMorning().catch(() => 0);
+  const pushed = from
+    ? 0
+    : await sendMorning().catch((error) => {
+        console.error("morning push failed", error);
+        return 0;
+      });
   return Response.json({ days, pushed });
 }

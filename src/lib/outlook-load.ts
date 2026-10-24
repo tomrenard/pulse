@@ -49,16 +49,14 @@ async function weeklyBest20(until: string) {
   return weeks.map((monday) => ({ monday, best20: best.get(monday) }));
 }
 
-/** Training load per day from `from` to `to`, zero on rest days. */
-function dailyLoads(activities: Activity[], from: string, to: string) {
+/** Training load per training day since `from`. */
+function dailyLoads(activities: Activity[], from: string) {
   const byDay = new Map<string, number>();
   for (const a of activities) {
     const d = a.start_date_local.slice(0, 10);
-    byDay.set(d, (byDay.get(d) ?? 0) + (a.icu_training_load ?? 0));
+    if (d >= from) byDay.set(d, (byDay.get(d) ?? 0) + (a.icu_training_load ?? 0));
   }
-  const out = [];
-  for (let d = from; d <= to; d = addDays(d, 1)) out.push({ date: d, load: byDay.get(d) ?? 0 });
-  return out;
+  return [...byDay].map(([date, load]) => ({ date, load }));
 }
 
 export async function loadOutlook() {
@@ -141,7 +139,7 @@ export async function loadOutlook() {
     races,
     ftp,
     kg: athlete.icu_weight,
-    recovery: recoveryResponse(dailyLoads(activities, addDays(date, -400), date), nights),
+    recovery: recoveryResponse(dailyLoads(activities, addDays(date, -400)), nights),
     potential: {
       // Stale after 30 days without a qualifying run: then there's no "now".
       now: last && last.date >= addDays(date, -30) ? last.vdot : undefined,

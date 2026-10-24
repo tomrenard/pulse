@@ -12,7 +12,7 @@ export function RouteMap({
 }: {
   line: [number, number][];
   /** Runs of the same power zone; the route is drawn in zone colours when present. */
-  segments?: { zone: number; coords: [number, number][] }[];
+  segments: { zone: number; coords: [number, number][] }[];
 }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -31,7 +31,7 @@ export function RouteMap({
         attributionControl: { compact: true },
       });
       map.on("load", () => {
-        const features = (segments?.length ? segments : [{ zone: 0, coords: line }]).map((s) => ({
+        const features = segments.map((s) => ({
           type: "Feature" as const,
           properties: { zone: s.zone },
           geometry: { type: "LineString" as const, coordinates: s.coords },

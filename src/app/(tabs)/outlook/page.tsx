@@ -1,5 +1,5 @@
 import { addDays, daysBetween, shortDate } from "@/lib/date";
-import { hmm } from "@/lib/format";
+import { hmm, signed } from "@/lib/format";
 import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
 import { raceDayVdot, timeAt } from "@/lib/potential";
@@ -29,9 +29,9 @@ function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
       info={
         <p>
           Big days are your top 10 % by training load ({r.bigLoad ? Math.round(r.bigLoad) : "–"}+),
-          with no other big day in the 3 days after. Each night after is compared with your 7-night
-          HRV before; recovered means back within your normal spread. Learnt from {r.events} big
-          days and {r.hrvNights} nights of HRV; an early read until {SOLID_NIGHTS} nights.
+          with no other big day within 3 days either side. Each night after is compared with your
+          7-night HRV before; recovered means back within your normal spread. Learnt from {r.events}{" "}
+          big days and {r.hrvNights} nights of HRV; an early read until {SOLID_NIGHTS} nights.
         </p>
       }
     >
@@ -42,7 +42,7 @@ function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
               {r.profile.map((p, k) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
                 <span key={k}>
-                  <b>{p === undefined ? "–" : `${p > 0 ? "+" : ""}${Math.round(p)} %`}</b>
+                  <b>{signed(p, " %")}</b>
                   night {k + 1}
                 </span>
               ))}
