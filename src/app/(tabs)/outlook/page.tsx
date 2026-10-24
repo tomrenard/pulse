@@ -104,7 +104,7 @@ export default async function OutlookPage() {
   const covered =
     raceDate !== undefined &&
     upToRace.some((w) => w.start_date_local.slice(0, 10) >= addDays(raceDate, -7)) &&
-    upToRace.every((w) => w.icu_training_load);
+    upToRace.every((w) => w.icu_training_load != null);
   const plan =
     known && covered && raceDate
       ? projectFitness(o.date, o.ctl as number, o.atl as number, loads)
