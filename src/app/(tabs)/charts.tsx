@@ -201,3 +201,36 @@ export function Forecast({
     </figure>
   );
 }
+
+const ZONE_COLORS = ["#7f8c9a", "#5be3a0", "#c8e35b", "#f7c55a", "#ff9a5a", "#ff6a6a", "#c06aff"];
+
+/** Share of time per zone as one stacked bar with a legend. */
+export function Zones({ secs, label }: { secs: number[]; label: string }) {
+  const total = secs.reduce((s, x) => s + x, 0);
+  if (!total) return null;
+  return (
+    <div className="zones">
+      <span className="dim">{label}</span>
+      <div
+        className="zone-bar"
+        role="img"
+        aria-label={`${label}: ${secs.map((x, i) => `Z${i + 1} ${Math.round((x / total) * 100)}%`).join(", ")}`}
+      >
+        {secs.map((x, i) =>
+          x > 0 ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
+            <i key={i} style={{ flex: x, background: ZONE_COLORS[i] }} />
+          ) : null,
+        )}
+      </div>
+      <div className="zone-legend num">
+        {secs.map((x, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
+          <span key={i}>
+            Z{i + 1} {Math.round((x / total) * 100)}%
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}

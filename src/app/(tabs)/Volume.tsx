@@ -26,17 +26,61 @@ const fmt = (m: Measure, v: number) =>
       : `${Math.round(v)}`;
 
 /** Strava-style weekly bars, stacked by sport, with this week's split underneath. */
-export function Volume({ weeks }: { weeks: { monday: string; sports: Totals }[] }) {
+export function Volume({
+  weeks,
+  title = "This week",
+  href,
+}: {
+  weeks: { monday: string; sports: Totals }[];
+  title?: string;
+  /** Where tapping the chart goes (Today → Training); none on Training itself. */
+  href?: string;
+}) {
   const [measure, setMeasure] = useState<Measure>("hours");
   const total = (s: Totals, m: Measure) => SPORTS.reduce((sum, sp) => sum + s[sp][m], 0);
   const max = Math.max(1e-9, ...weeks.map((w) => total(w.sports, measure)));
   const now = weeks.at(-1)?.sports;
   const H = 70;
   const slot = 300 / weeks.length;
+  const chart = (
+    <>
+      <svg
+        viewBox={`0 0 300 ${H}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        style={{ height: H }}
+      >
+        {weeks.map((w, i) => {
+          let y = H;
+          return SPORTS.map((sp) => {
+            const h = (w.sports[sp][measure] / max) * (H - 4);
+            if (h <= 0) return null;
+            y -= h;
+            return (
+              <rect
+                key={`${w.monday}-${sp}`}
+                x={i * slot + slot * 0.18}
+                width={slot * 0.64}
+                y={y}
+                height={h}
+                fill={COLOR[sp]}
+                fillOpacity={i === weeks.length - 1 ? 1 : 0.55}
+              />
+            );
+          });
+        })}
+      </svg>
+      <div className="axis">
+        <span>{weeks.length} weeks ago</span>
+        <span>max {fmt(measure, max)}</span>
+        <span>this week</span>
+      </div>
+    </>
+  );
   return (
     <section className="mod" aria-label="Weekly volume">
       <div className="mod-h">
-        This week
+        {title}
         <fieldset className="seg-ctl" aria-label="Measure">
           {MEASURES.map(([m, label]) => (
             <button
@@ -55,43 +99,17 @@ export function Volume({ weeks }: { weeks: { monday: string; sports: Totals }[] 
           {now ? fmt("hours", total(now, "hours")) : "–"}
           <small> · {now ? fmt("km", total(now, "km")) : ""}</small>
         </div>
-        <Link
-          href="/training"
-          className="chart"
-          aria-label="Weekly volume, last 12 weeks; open Training"
-        >
-          <svg
-            viewBox={`0 0 300 ${H}`}
-            preserveAspectRatio="none"
-            aria-hidden="true"
-            style={{ height: H }}
+        {href ? (
+          <Link
+            href={href}
+            className="chart"
+            aria-label={`Weekly volume, last ${weeks.length} weeks`}
           >
-            {weeks.map((w, i) => {
-              let y = H;
-              return SPORTS.map((sp) => {
-                const h = (w.sports[sp][measure] / max) * (H - 4);
-                if (h <= 0) return null;
-                y -= h;
-                return (
-                  <rect
-                    key={`${w.monday}-${sp}`}
-                    x={i * slot + slot * 0.18}
-                    width={slot * 0.64}
-                    y={y}
-                    height={h}
-                    fill={COLOR[sp]}
-                    fillOpacity={i === weeks.length - 1 ? 1 : 0.55}
-                  />
-                );
-              });
-            })}
-          </svg>
-          <div className="axis">
-            <span>12 weeks ago</span>
-            <span>max {fmt(measure, max)}</span>
-            <span>this week</span>
-          </div>
-        </Link>
+            {chart}
+          </Link>
+        ) : (
+          <div className="chart">{chart}</div>
+        )}
         <div className="split num">
           {SPORTS.filter((sp) => now && now[sp].hours > 0).map((sp) => (
             <span key={sp}>

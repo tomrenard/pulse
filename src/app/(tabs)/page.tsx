@@ -41,7 +41,7 @@ export default async function TodayPage() {
           </div>
         )}
       </Hero>
-      <Volume weeks={t.volume} />
+      <Volume weeks={t.volume} href="/training" />
       <PlanStrip date={t.date} plan={t.plan} />
       <Workout
         event={t.plan.find(

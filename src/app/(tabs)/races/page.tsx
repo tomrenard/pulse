@@ -108,7 +108,7 @@ export default async function RacesPage() {
       <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km best">
         <div className="cond">Your best efforts, then and now</div>
         <div className="hl num">
-          FTP {r.ftpSet ?? "–"} W set <span>·</span> {r.ftpModel ?? "–"} W from the last 6 weeks
+          FTP {r.ftpSet ?? "–"} W set <span>·</span> {r.ftpModel ?? "–"} W eFTP
         </div>
       </Hero>
 
@@ -165,7 +165,7 @@ export default async function RacesPage() {
           <Table rows={r.power} show={(v) => (v ? `${v} W` : "–")} />
           <p className="say dim">
             Power data starts in 2025. FTP {r.ftpSet ?? "–"} W is the value set in intervals.icu;{" "}
-            {r.ftpModel ?? "–"} W is intervals.icu's estimate from your last 6 weeks.
+            {r.ftpModel ?? "–"} W is intervals.icu's eFTP, its running estimate from recent rides.
           </p>
         </div>
       </Module>

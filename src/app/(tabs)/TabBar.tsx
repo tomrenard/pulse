@@ -79,9 +79,11 @@ export function TabBar() {
     setTapped(null);
   }
   const active = tapped ?? path;
+  // A tab owns its sub-pages too (/training/i123 is Training).
+  const owns = (href: string) => (href === "/" ? active === "/" : active.startsWith(href));
   const index = Math.max(
     0,
-    TABS.findIndex(([href]) => href === active),
+    TABS.findIndex(([href]) => owns(href)),
   );
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export function TabBar() {
             // Whole page and its data, kept 5 min: switching tabs is instant.
             prefetch={true}
             className="tab"
-            aria-current={href === active ? "page" : undefined}
+            aria-current={owns(href) ? "page" : undefined}
             onClick={() => setTapped(href)}
           >
             {svg(glyph)}

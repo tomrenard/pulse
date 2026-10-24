@@ -770,6 +770,94 @@ ul.plain {
   color: var(--fg);
 }
 
+/* training */
+.zones {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.zone-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  gap: 1px;
+}
+.zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--fg-3);
+}
+ul.feed {
+  list-style: none;
+  margin: 0;
+  padding: 4px 16px 8px;
+}
+.feed li + li {
+  border-top: 1px solid var(--hair);
+}
+.feed a {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+}
+.feed .sport {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.45);
+}
+.feed .sport.ride {
+  background: var(--form);
+}
+.feed .sport.run {
+  background: var(--go);
+}
+.feed .sport.swim {
+  background: var(--hrv);
+}
+.feed .what {
+  display: grid;
+  min-width: 0;
+}
+.feed .what b {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feed small {
+  font-size: 12px;
+  color: var(--fg-3);
+}
+.feed .figures {
+  display: grid;
+  justify-items: end;
+  font-size: 15px;
+}
+.map-mod {
+  padding: 0;
+}
+.route-map {
+  height: 280px;
+}
+.route-map .maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--fg-3);
+  font-size: 10px;
+}
+.route-map .maplibregl-ctrl-attrib a {
+  color: var(--fg-2);
+}
+
 /* login */
 .field {
   width: 100%;

@@ -32,7 +32,6 @@ type PowerCurve = {
   watts?: number[];
   /** W/kg at the weight recorded with each effort. */
   watts_per_kg?: number[];
-  powerModels?: { ftp?: number }[];
 };
 export type PaceCurve = { id: string; distance?: number[]; values?: number[] };
 type Athlete = { icu_weight?: number; sportSettings?: { types?: string[]; ftp?: number }[] };
@@ -48,7 +47,7 @@ export const at = (xs: number[] = [], ys: number[] = [], x: number) => {
 
 /** Best run times (seconds) and best power (W) per window, from intervals.icu's best-effort curves. */
 export async function loadRecords() {
-  const [powerCurves, paceCurves, athlete, activities] = await Promise.all([
+  const [powerCurves, paceCurves, athlete, activities, wellness] = await Promise.all([
     orNothing(
       intervals<{ list: PowerCurve[] }>(`/power-curves.json?type=Ride&curves=${curves}`, HOUR),
       { list: [] },
@@ -62,6 +61,12 @@ export async function loadRecords() {
       intervals<BadgeActivity[]>(
         `/activities?oldest=2021-01-01&newest=${today()}&fields=start_date_local,type,distance,moving_time,total_elevation_gain`,
         HOUR,
+      ),
+      [],
+    ),
+    orNothing(
+      intervals<{ sportInfo?: { type: string; eftp?: number }[] }[]>(
+        `/wellness?oldest=${today()}&newest=${today()}&cols=sportInfo`,
       ),
       [],
     ),
@@ -108,8 +113,9 @@ export async function loadRecords() {
     vo2,
     ftpSet: athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp,
     weight: athlete.icu_weight,
-    /** intervals.icu's power-model FTP from the last 6 weeks of riding. */
-    ftpModel: Math.round(powerAt("42d")?.powerModels?.[0]?.ftp ?? 0) || undefined,
+    /** intervals.icu's eFTP: its running estimate of FTP from recent rides. */
+    ftpModel:
+      Math.round(wellness[0]?.sportInfo?.find((x) => x.type === "Ride")?.eftp ?? 0) || undefined,
     pb: level(0),
     now: level(3),
     badges: badges(

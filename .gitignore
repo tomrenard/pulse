@@ -9,3 +9,5 @@ next-env.d.ts
 coros_tools.json
 design/
 scripts/coros_spike.py
+# MapLibre worker, copied from node_modules at build time
+public/maplibre-gl-worker.mjs
