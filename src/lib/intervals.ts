@@ -20,8 +20,8 @@ export function intervals<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** Endpoints of one activity, e.g. activity("i123", "/streams.json"). */
-export function activity<T>(id: string, path = "", init: RequestInit = {}): Promise<T> {
-  return call<T>(`/activity/${encodeURIComponent(id)}${path}`, init);
+export function activity<T>(id: string, path = ""): Promise<T> {
+  return call<T>(`/activity/${encodeURIComponent(id)}${path}`, {});
 }
 
 async function call<T>(path: string, init: RequestInit): Promise<T> {

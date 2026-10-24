@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { hm } from "@/lib/format";
+import { shortDate } from "@/lib/date";
+import { clock, hm } from "@/lib/format";
 import { activity as icuActivity } from "@/lib/intervals";
 import { orNothing } from "@/lib/nights";
 import { type Activity, zoneTotals } from "@/lib/training";
@@ -23,7 +24,10 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   if (!/^i?\d+$/.test(id)) notFound();
   const [activity, streams, laps] = await Promise.all([
-    orNothing(icuActivity<Activity>(id), undefined),
+    // No fallback: an outage should show the error page, not "not found".
+    icuActivity<Activity>(id).catch((e: Error) =>
+      e.message.includes(" 404") ? undefined : Promise.reject(e),
+    ),
     orNothing(icuActivity<Stream[]>(id, "/streams.json?types=latlng"), []),
     orNothing(icuActivity<{ icu_intervals?: Lap[] }>(id, "/intervals"), {}),
   ]);
@@ -32,15 +36,13 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   // Every 10th point is plenty for a phone-sized map.
   const line = (ll?.data ?? [])
     .map((lat, i) => [ll?.data2?.[i] as number, lat] as [number, number])
-    .filter((p, i) => i % 10 === 0 && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+    .filter(
+      (p, i, all) =>
+        (i % 10 === 0 || i === all.length - 1) && Number.isFinite(p[0]) && Number.isFinite(p[1]),
+    );
   const zones = zoneTotals([activity]);
   const lapsList = (laps.icu_intervals ?? []).filter((l) => l.moving_time);
-  const date = new Date(activity.start_date_local).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const date = shortDate(activity.start_date_local, true);
   return (
     <Sky state="go">
       <Hero
@@ -101,7 +103,7 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
                 // biome-ignore lint/suspicious/noArrayIndexKey: laps are in a fixed order
                 <tr key={i}>
                   <th scope="row">{i + 1}</th>
-                  <td>{hm(l.moving_time)}</td>
+                  <td>{clock(l.moving_time)}</td>
                   <td>{l.distance ? (l.distance / 1000).toFixed(1) : "–"}</td>
                   <td>{l.average_watts ?? "–"}</td>
                   <td>{l.average_heartrate ? Math.round(l.average_heartrate) : "–"}</td>

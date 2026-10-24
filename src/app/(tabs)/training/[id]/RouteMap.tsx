@@ -10,7 +10,7 @@ export function RouteMap({ line }: { line: [number, number][] }) {
     let map: import("maplibre-gl").Map | undefined;
     let cancelled = false;
     import("maplibre-gl").then(({ Map: MapLibre, LngLatBounds, setWorkerUrl }) => {
-      if (cancelled || !box.current || line.length < 2) return;
+      if (cancelled || !box.current) return;
       // Workers must come from our own origin; the build copies MapLibre's into public/.
       setWorkerUrl("/maplibre-gl-worker.mjs");
       const bounds = line.reduce((b, p) => b.extend(p), new LngLatBounds(line[0], line[0]));
@@ -20,8 +20,6 @@ export function RouteMap({ line }: { line: [number, number][] }) {
         bounds,
         fitBoundsOptions: { padding: 28 },
         attributionControl: { compact: true },
-
-        interactive: true,
       });
       map.on("load", () => {
         map?.addSource("route", {
@@ -46,5 +44,6 @@ export function RouteMap({ line }: { line: [number, number][] }) {
       map?.remove();
     };
   }, [line]);
-  return <div ref={box} className="route-map" role="img" aria-label="Route map" />;
+  // Named by the surrounding section ("Route"); no role, so the map controls stay reachable.
+  return <div ref={box} className="route-map" />;
 }

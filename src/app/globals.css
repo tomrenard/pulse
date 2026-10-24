@@ -812,16 +812,6 @@ ul.feed {
   width: 10px;
   height: 10px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.45);
-}
-.feed .sport.ride {
-  background: var(--form);
-}
-.feed .sport.run {
-  background: var(--go);
-}
-.feed .sport.swim {
-  background: var(--hrv);
 }
 .feed .what {
   display: grid;

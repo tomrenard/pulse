@@ -4,7 +4,7 @@ import { COOKIE, validSession } from "@/lib/session";
 export const config = {
   // api/cron/sync checks its own CRON_SECRET (Vercel cron sends no cookie).
   matcher: [
-    "/((?!(?:login|manifest\\.webmanifest|icon\\.svg|apple-icon)$|api/cron/sync$|_next/static/).*)",
+    "/((?!(?:login|manifest\\.webmanifest|icon\\.svg|apple-icon|maplibre-gl-worker\\.mjs)$|api/cron/sync$|_next/static/).*)",
   ],
 };
 

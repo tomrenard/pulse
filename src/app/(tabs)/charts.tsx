@@ -1,16 +1,11 @@
+import { shortDate } from "@/lib/date";
+
 /** Hand-drawn SVG charts: a line with an optional normal band, and bars with a target line. */
 
 type Point = { date: string; value: number };
 
 const W = 300;
 const H = 90;
-
-const short = (date: string) =>
-  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
 
 function scale(values: number[], pad: number) {
   const lo = Math.min(...values) - pad;
@@ -21,8 +16,8 @@ function scale(values: number[], pad: number) {
 function Axis({ points }: { points: Point[] }) {
   return (
     <div className="axis">
-      <span>{short((points[0] as Point).date)}</span>
-      <span>{short((points.at(-1) as Point).date)}</span>
+      <span>{shortDate((points[0] as Point).date)}</span>
+      <span>{shortDate((points.at(-1) as Point).date)}</span>
     </div>
   );
 }
@@ -131,7 +126,10 @@ export function Bars({
 export function Forecast({
   days,
   race,
+  label = "Projected",
 }: {
+  /** "Projected" for scenarios, "Past" for history: read out by screen readers. */
+  label?: string;
   days: { date: string; ctl: number; tsb: number }[];
   race?: string;
 }) {
@@ -154,7 +152,7 @@ export function Forecast({
         viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label={`Projected fitness ${Math.round(days[0]?.ctl ?? 0)} to ${Math.round(last.ctl)}, form ${Math.round(last.tsb)} at the end`}
+        aria-label={`${label} fitness ${Math.round(days[0]?.ctl ?? 0)} to ${Math.round(last.ctl)}, form ${Math.round(last.tsb)} at the end`}
       >
         <line
           x1={0}
@@ -191,12 +189,12 @@ export function Forecast({
         />
       </svg>
       <div className="axis">
-        <span>{short(days[0]?.date ?? "")}</span>
+        <span>{shortDate(days[0]?.date ?? "")}</span>
         <span className="legend-inline">
           <i style={{ background: "var(--form)" }} /> fitness{" "}
           <i style={{ background: "var(--go)" }} /> form
         </span>
-        <span>{short(last.date)}</span>
+        <span>{shortDate(last.date)}</span>
       </div>
     </figure>
   );
@@ -208,13 +206,14 @@ const ZONE_COLORS = ["#7f8c9a", "#5be3a0", "#c8e35b", "#f7c55a", "#ff9a5a", "#ff
 export function Zones({ secs, label }: { secs: number[]; label: string }) {
   const total = secs.reduce((s, x) => s + x, 0);
   if (!total) return null;
+  const pct = secs.map((x) => Math.round((x / total) * 100));
   return (
     <div className="zones">
       <span className="dim">{label}</span>
       <div
         className="zone-bar"
         role="img"
-        aria-label={`${label}: ${secs.map((x, i) => `Z${i + 1} ${Math.round((x / total) * 100)}%`).join(", ")}`}
+        aria-label={`${label}: ${pct.map((p, i) => `Z${i + 1} ${p}%`).join(", ")}`}
       >
         {secs.map((x, i) =>
           x > 0 ? (
@@ -227,7 +226,7 @@ export function Zones({ secs, label }: { secs: number[]; label: string }) {
         {secs.map((x, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
           <span key={i}>
-            Z{i + 1} {Math.round((x / total) * 100)}%
+            Z{i + 1} {pct[i]}%
           </span>
         ))}
       </div>

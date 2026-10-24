@@ -1,6 +1,6 @@
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
-import { orNothing } from "@/lib/nights";
+import { orNothing, tsbOf } from "@/lib/nights";
 import type { PlanEvent } from "@/lib/today";
 import { type VolumeActivity, weeklyVolume } from "@/lib/volume";
 
@@ -41,6 +41,8 @@ export async function loadTraining() {
     orNothing(
       intervals<Activity[]>(
         `/activities?oldest=${addDays(date, -364)}&newest=${date}&fields=${FIELDS}`,
+        // A year of activities: cached 5 min, so tab prefetches don't refetch it on every open.
+        { next: { revalidate: 300 } },
       ),
       [],
     ),
@@ -53,10 +55,9 @@ export async function loadTraining() {
     orNothing(intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 13)}`), []),
   ]);
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -27));
-  const fitness = wellness
-    .filter((w) => w.ctl != null && w.atl != null)
-    .map((w) => ({ date: w.id, ctl: w.ctl as number, tsb: (w.ctl as number) - (w.atl as number) }));
-  const now = wellness.at(-1);
+  const known = wellness.filter((w) => w.ctl != null && w.atl != null);
+  const fitness = known.map((w) => ({ date: w.id, ctl: w.ctl as number, tsb: tsbOf(w) as number }));
+  const now = known.at(-1);
   return {
     date,
     feed: [...activities]
@@ -66,7 +67,7 @@ export async function loadTraining() {
     zones: zoneTotals(recent),
     fitness,
     ctl: now?.ctl,
-    atl: now?.atl,
+    tsb: tsbOf(now),
     ramp: now?.rampRate,
     plan: events.filter(
       (e) => ["WORKOUT", "NOTE"].includes(e.category) || e.category.startsWith("RACE"),

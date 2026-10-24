@@ -9,3 +9,12 @@ export const weekday = (date: string) =>
 
 export const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+
+/** "24 Oct", or "Sat 24 Oct 2026" with `long`. Dates or local date-times, read as written. */
+export const shortDate = (date: string, long = false) =>
+  new Date(`${date.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    ...(long && { weekday: "short", year: "numeric" }),
+  });

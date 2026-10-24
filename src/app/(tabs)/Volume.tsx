@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { hmm } from "@/lib/format";
-import { SPORTS, type Sport, type Totals } from "@/lib/volume";
+import { SPORT_COLOR, SPORTS, type Totals } from "@/lib/volume";
 
-const COLOR: Record<Sport, string> = {
-  ride: "var(--form)",
-  run: "var(--go)",
-  swim: "var(--hrv)",
-  other: "rgba(255,255,255,.45)",
-};
 const MEASURES = [
   ["hours", "Time"],
   ["km", "Distance"],
@@ -63,7 +57,7 @@ export function Volume({
                 width={slot * 0.64}
                 y={y}
                 height={h}
-                fill={COLOR[sp]}
+                fill={SPORT_COLOR[sp]}
                 fillOpacity={i === weeks.length - 1 ? 1 : 0.55}
               />
             );
@@ -113,7 +107,7 @@ export function Volume({
         <div className="split num">
           {SPORTS.filter((sp) => now && now[sp].hours > 0).map((sp) => (
             <span key={sp}>
-              <i style={{ background: COLOR[sp] }} />
+              <i style={{ background: SPORT_COLOR[sp] }} />
               <b>{sp}</b> {fmt("hours", now?.[sp].hours ?? 0)}
               {sp !== "other" && now ? ` · ${fmt("km", now[sp].km)}` : ""}
             </span>

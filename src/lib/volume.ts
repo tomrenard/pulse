@@ -2,6 +2,13 @@ import { addDays } from "./date.ts";
 
 export const SPORTS = ["ride", "run", "swim", "other"] as const;
 export type Sport = (typeof SPORTS)[number];
+/** One colour per sport, everywhere in the app. */
+export const SPORT_COLOR: Record<Sport, string> = {
+  ride: "var(--form)",
+  run: "var(--go)",
+  swim: "var(--hrv)",
+  other: "rgba(255,255,255,.45)",
+};
 /** Weeks shown in the volume chart. */
 export const WEEKS = 12;
 

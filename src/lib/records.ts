@@ -1,5 +1,5 @@
 import { type BadgeActivity, badges } from "@/lib/badges";
-import { today } from "@/lib/date";
+import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "@/lib/level";
 import { orNothing } from "@/lib/nights";
@@ -66,7 +66,7 @@ export async function loadRecords() {
     ),
     orNothing(
       intervals<{ sportInfo?: { type: string; eftp?: number }[] }[]>(
-        `/wellness?oldest=${today()}&newest=${today()}&cols=sportInfo`,
+        `/wellness?oldest=${addDays(today(), -7)}&newest=${today()}&cols=sportInfo`,
       ),
       [],
     ),
@@ -114,8 +114,14 @@ export async function loadRecords() {
     ftpSet: athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp,
     weight: athlete.icu_weight,
     /** intervals.icu's eFTP: its running estimate of FTP from recent rides. */
+    // Newest day that has one: today's row may not exist yet early in the morning.
     ftpModel:
-      Math.round(wellness[0]?.sportInfo?.find((x) => x.type === "Ride")?.eftp ?? 0) || undefined,
+      Math.round(
+        [...wellness]
+          .reverse()
+          .flatMap((w) => w.sportInfo ?? [])
+          .find((x) => x.type === "Ride" && x.eftp)?.eftp ?? 0,
+      ) || undefined,
     pb: level(0),
     now: level(3),
     badges: badges(

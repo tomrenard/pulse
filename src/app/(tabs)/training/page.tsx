@@ -1,36 +1,32 @@
 import Link from "next/link";
-import { weekday } from "@/lib/date";
+import { shortDate, weekday } from "@/lib/date";
 import { hm } from "@/lib/format";
 import { loadTraining } from "@/lib/training";
-import { sportOf } from "@/lib/volume";
+import { SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Forecast, Zones } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
 import { Volume } from "../Volume";
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-
 export default async function TrainingPage() {
   const t = await loadTraining();
   const week = t.year.at(-1)?.sports;
   const hours = week ? Object.values(week).reduce((s, x) => s + x.hours, 0) : 0;
-  const form = t.ctl != null && t.atl != null ? t.ctl - t.atl : undefined;
   return (
     <Sky state="go">
       <Hero place="Training" word={hm(hours * 3600).replace(" ", "")} sub="this week">
         <div className="cond">this week</div>
         <div className="hl num">
           Fitness {t.ctl != null ? Math.round(t.ctl) : "–"} <span>·</span> Form{" "}
-          {form != null ? Math.round(form) : "–"} <span>·</span> Ramp{" "}
+          {t.tsb != null ? Math.round(t.tsb) : "–"} <span>·</span> Ramp{" "}
           {t.ramp != null ? `${t.ramp > 0 ? "+" : ""}${t.ramp.toFixed(1)}/wk` : "–"}
         </div>
       </Hero>
 
       <Module title="Fitness & form · 6 months">
         <div className="mod-b">
-          <Forecast days={t.fitness} />
+          <Forecast days={t.fitness} label="Past" />
           <p className="say dim">
             Fitness = 42-day load average, form = fitness − 7-day fatigue (intervals.icu). Ramp is
             the weekly change in fitness; +5 to +8 a week is a common rule of thumb, not a hard
@@ -63,7 +59,9 @@ export default async function TrainingPage() {
             <ul className="plain">
               {t.plan.map((e) => (
                 <li key={e.id}>
-                  <b className="num">{weekday(e.start_date_local.slice(0, 10))}</b>{" "}
+                  <b className="num">
+                    {weekday(e.start_date_local.slice(0, 10))} {shortDate(e.start_date_local)}
+                  </b>{" "}
                   {e.name ?? e.type}
                   {e.icu_training_load ? (
                     <span className="dim"> · load {e.icu_training_load}</span>
@@ -83,11 +81,16 @@ export default async function TrainingPage() {
           {t.feed.map((a) => (
             <li key={a.id}>
               <Link href={`/training/${a.id}`}>
-                <span className={`sport ${sportOf(a.type)}`} aria-hidden="true" />
+                <span
+                  className="sport"
+                  style={{ background: SPORT_COLOR[sportOf(a.type)] }}
+                  aria-hidden="true"
+                />
                 <span className="what">
                   <b>{a.name ?? a.type}</b>
                   <small>
-                    {day(a.start_date_local)} · {a.type}
+                    {weekday(a.start_date_local.slice(0, 10))} {shortDate(a.start_date_local)} ·{" "}
+                    {a.type}
                   </small>
                 </span>
                 <span className="num figures">
