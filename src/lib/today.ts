@@ -1,12 +1,12 @@
 import { asc, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { log, night } from "@/db/schema";
-import { today } from "@/lib/coros/sync";
+import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { readiness } from "@/lib/readiness";
 
-export const addDays = (date: string, n: number) =>
-  new Date(Date.parse(`${date}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+/** intervals.icu being down must not take the page with it: its parts just show "–". */
+const orNothing = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Step = {
@@ -51,15 +51,15 @@ export async function loadToday() {
       .from(night)
       .where(gte(night.date, addDays(date, -70)))
       .orderBy(asc(night.date)),
-    intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`),
-    intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 6)}`),
-    intervals<Athlete>(""),
+    orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
+    orNothing(intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 6)}`), []),
+    orNothing(intervals<Athlete>(""), {}),
     db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
   ]);
   const w = wellness.find((x) => x.id === date);
   const tsb = w?.ctl !== undefined && w.atl !== undefined ? w.ctl - w.atl : undefined;
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;
-  const lastNight = nights.at(-1)?.date === date ? nights.at(-1) : undefined;
+  const lastNight = nights.find((n) => n.date === date);
   return {
     date,
     nights,

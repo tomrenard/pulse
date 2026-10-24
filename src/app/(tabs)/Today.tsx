@@ -1,5 +1,7 @@
 import type { night } from "@/db/schema";
-import { addDays, type PlanEvent, profile } from "@/lib/today";
+import { addDays, weekday } from "@/lib/date";
+import { MIN_NIGHTS, rhrNormal, SLEEP_NEED_SECS } from "@/lib/readiness";
+import { type PlanEvent, profile } from "@/lib/today";
 
 type Night = typeof night.$inferSelect;
 
@@ -8,8 +10,7 @@ export const hm = (secs?: number | null) =>
     ? `${Math.floor(secs / 3600)}h ${String(Math.round((secs % 3600) / 60)).padStart(2, "0")}m`
     : "–";
 
-const weekday = (date: string) =>
-  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+const NEED = hm(SLEEP_NEED_SECS).replace("h ", " h ").replace("m", "");
 
 const SPORT: Record<string, React.ReactNode> = {
   ride: (
@@ -53,42 +54,39 @@ function Icon({ sport }: { sport: string }) {
   );
 }
 
-export function Module({
+function Module({
   title,
-  icon,
   children,
   className = "",
 }: {
   title: string;
-  icon?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <section className={`mod ${className}`} aria-label={title}>
-      <div className="mod-h">
-        {icon}
-        {title}
-      </div>
+      <div className="mod-h">{title}</div>
       {children}
     </section>
   );
 }
 
 export function PlanStrip({ date, plan }: { date: string; plan: PlanEvent[] }) {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(date, i));
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(date, i);
+    return { d, event: plan.find((e) => e.start_date_local.startsWith(d)) };
+  });
   const sessions = plan.length;
   return (
     <Module title="Next 7 days · plan">
       <p className="mod-sum">
         {sessions
-          ? `${sessions} session${sessions > 1 ? "s" : ""} planned, ${days.filter((d) => !plan.some((e) => e.start_date_local.startsWith(d))).length} rest days.`
+          ? `${sessions} session${sessions > 1 ? "s" : ""} planned, ${days.filter((x) => !x.event).length} rest days.`
           : "Nothing planned in intervals.icu for the next 7 days."}
       </p>
       {sessions > 0 && (
         <div className="strip">
-          {days.map((d, i) => {
-            const event = plan.find((e) => e.start_date_local.startsWith(d));
+          {days.map(({ d, event }, i) => {
             const sport = event ? sportOf(event.type) : "rest";
             return (
               <div key={d} className={`day${i ? "" : " now"}`}>
@@ -196,9 +194,11 @@ export function Workout({
 
 /** Weather's 10-day list: per night the overnight HRV range, the night's average, your normal. */
 export function HrvList({
+  date,
   nights,
   normal,
 }: {
+  date: string;
   nights: Night[];
   normal?: { low: number; high: number };
 }) {
@@ -218,12 +218,12 @@ export function HrvList({
     <Module title="10-night HRV">
       <div className="hair" />
       <ul className="rows">
-        {rows.map((n, i) => {
+        {rows.map((n) => {
           const hrv = n.hrv as number;
           const below = normal ? hrv < normal.low : false;
           return (
             <li key={n.date} className="row num">
-              <span>{i ? weekday(n.date) : "Today"}</span>
+              <span>{n.date === date ? "Today" : weekday(n.date)}</span>
               <span className="slp">{hm(n.asleepSecs).replace(" ", "")}</span>
               <span className="lo">{Math.round(n.hrvLow ?? hrv)}</span>
               <span className="sr">
@@ -251,7 +251,7 @@ export function HrvList({
         Bar: overnight HRV, 10th to 90th percentile. Dot: night average.
         {normal
           ? ` Light band: your normal (${Math.round(normal.low)}–${Math.round(normal.high)} ms).`
-          : " Your normal appears after 14 nights."}
+          : ` Your normal appears after ${MIN_NIGHTS} nights.`}
       </div>
     </Module>
   );
@@ -259,15 +259,15 @@ export function HrvList({
 
 export function SleepTile({
   nights,
-  needSecs,
+  last,
   spread,
 }: {
   nights: Night[];
-  needSecs: number;
+  last?: Night;
   spread?: number;
 }) {
+  const needSecs = SLEEP_NEED_SECS;
   const week = nights.slice(-7);
-  const last = week.at(-1);
   const max = Math.max(needSecs * 1.15, ...week.map((n) => n.asleepSecs ?? 0));
   const y = (s: number) => 40 - (s / max) * 40;
   return (
@@ -284,7 +284,7 @@ export function SleepTile({
               height={40 - y(n.asleepSecs ?? 0)}
               rx={4}
               fill="var(--sleep)"
-              fillOpacity={i === week.length - 1 ? 1 : 0.4}
+              fillOpacity={n.date === last?.date ? 1 : 0.4}
             />
           ))}
           <line
@@ -299,7 +299,7 @@ export function SleepTile({
         </svg>
         <div className="say">
           {last?.asleepSecs
-            ? `${Math.round((last.asleepSecs / needSecs) * 100)}% of your 8 h 30 need.`
+            ? `${Math.round((last.asleepSecs / needSecs) * 100)}% of your ${NEED} need.`
             : "No sleep recorded last night."}
           {spread !== undefined ? ` Bedtime spread ${spread} min this week.` : ""}
         </div>
@@ -327,39 +327,38 @@ function Gauge({
   );
 }
 
-export function RhrTile({ nights }: { nights: Night[] }) {
-  const values = nights
-    .slice(-60)
-    .map((n) => n.rhr)
-    .filter(Boolean) as number[];
-  const last = nights.at(-1)?.rhr;
-  const mean = values.reduce((s, v) => s + v, 0) / (values.length || 1);
-  const sd = Math.sqrt(
-    values.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(1, values.length - 1),
-  );
-  const low = Math.round(mean - sd);
-  const high = Math.round(mean + Math.max(sd, 3));
-  const word = !last ? "–" : last > high ? "Up" : last < low ? "Low" : "Normal";
+export function RhrTile({ nights, last, date }: { nights: Night[]; last?: Night; date: string }) {
+  const normal = rhrNormal(nights, date);
+  const rhr = last?.rhr;
+  const word = !rhr
+    ? "–"
+    : !normal
+      ? ""
+      : rhr > normal.high
+        ? "Up"
+        : rhr < normal.low
+          ? "Low"
+          : "Normal";
   return (
     <Module title="Resting HR" className="tile">
       <div className="mod-b">
         <div className="v num">
-          {last ?? "–"}
+          {rhr ?? "–"}
           <small> bpm</small>
         </div>
         <div className="w">{word}</div>
-        {last && values.length >= 14 ? (
+        {rhr && normal ? (
           <Gauge
-            value={last}
-            min={low - 6}
-            max={high + 6}
+            value={rhr}
+            min={normal.low - 6}
+            max={normal.high + 6}
             color={`linear-gradient(90deg,rgba(255,255,255,.18) 0 30%,var(--rhr) 30% 70%,rgba(255,255,255,.18) 70%)`}
           />
         ) : null}
         <div className="say">
-          {values.length >= 14
-            ? `Your normal: ${low}–${high} bpm.`
-            : "Normal range after 14 nights."}
+          {normal
+            ? `Your normal: ${normal.low}–${normal.high} bpm.`
+            : `Normal range after ${MIN_NIGHTS} nights.`}
         </div>
       </div>
     </Module>
@@ -369,13 +368,13 @@ export function RhrTile({ nights }: { nights: Night[] }) {
 const STRESS_WORD = (v: number) =>
   v <= 25 ? "Relaxed" : v <= 50 ? "Low" : v <= 75 ? "Medium" : "High";
 
-export function StressTile({ nights }: { nights: Night[] }) {
-  const last = nights.at(-1)?.stress;
+export function StressTile({ last: night }: { last?: Night }) {
+  const last = night?.stress;
   return (
     <Module title="Stress" className="tile">
       <div className="mod-b">
         <div className="v num">{last ?? "–"}</div>
-        <div className="w">{last !== undefined && last !== null ? STRESS_WORD(last) : ""}</div>
+        <div className="w">{last != null ? STRESS_WORD(last) : ""}</div>
         {last != null && (
           <Gauge
             value={last}

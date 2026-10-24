@@ -24,7 +24,11 @@ async function post(path: string, body: Record<string, string> | object, json = 
   return JSON.parse(text);
 }
 
-/** Registers pulse as an OAuth client once per redirect URI (dynamic client registration). */
+/**
+ * The OAuth client for this redirect URI: the stored one, or a new registration (dynamic client
+ * registration). Nothing is stored until the login completes, so starting a login from another
+ * host (a preview URL) never disconnects the working one.
+ */
 async function clientFor(redirectUri: string) {
   const [row] = await db().select().from(corosAuth).where(eq(corosAuth.id, 1));
   if (row?.redirectUri === redirectUri) return row.clientId;
@@ -40,13 +44,6 @@ async function clientFor(redirectUri: string) {
     },
     true,
   );
-  await db()
-    .insert(corosAuth)
-    .values({ id: 1, clientId: client.client_id, redirectUri })
-    .onConflictDoUpdate({
-      target: corosAuth.id,
-      set: { clientId: client.client_id, redirectUri, accessToken: null, refreshToken: null },
-    });
   return client.client_id as string;
 }
 
@@ -66,9 +63,11 @@ export async function authorizeUrl(redirectUri: string) {
     state,
     resource: RESOURCE,
   }).toString();
-  return { url: url.toString(), verifier, state };
+  return { url: url.toString(), verifier, state, clientId };
 }
 
+// Tokens are stored in plain text: single-user app, and the database is only reachable with
+// its own credentials. Encrypting them would add a key to manage for little gain.
 type Tokens = { access_token: string; refresh_token: string; expires_in: number };
 
 const tokenColumns = (t: Tokens) => ({
@@ -77,21 +76,31 @@ const tokenColumns = (t: Tokens) => ({
   expiresAt: new Date(Date.now() + t.expires_in * 1000),
 });
 
-export async function exchangeCode(code: string, verifier: string) {
-  const [row] = await db().select().from(corosAuth).where(eq(corosAuth.id, 1));
-  if (!row) throw new Error("COROS client not registered");
+export async function exchangeCode(
+  code: string,
+  verifier: string,
+  clientId: string,
+  redirectUri: string,
+) {
   const tokens: Tokens = await post("/oauth2/token", {
     grant_type: "authorization_code",
     code,
-    redirect_uri: row.redirectUri,
-    client_id: row.clientId,
+    redirect_uri: redirectUri,
+    client_id: clientId,
     code_verifier: verifier,
     resource: RESOURCE,
   });
-  await db().update(corosAuth).set(tokenColumns(tokens)).where(eq(corosAuth.id, 1));
+  const row = { clientId, redirectUri, ...tokenColumns(tokens) };
+  await db()
+    .insert(corosAuth)
+    .values({ id: 1, ...row })
+    .onConflictDoUpdate({ target: corosAuth.id, set: row });
 }
 
-/** A day's margin: the cron runs daily, so a token never expires between two runs. */
+/**
+ * COROS access tokens last 30 days (expires_in 2591999, seen 2026-10-24). Refreshing a day
+ * early means the daily cron always finds a valid token, and rotation happens about monthly.
+ */
 const REFRESH_BEFORE_MS = 24 * 3600 * 1000;
 
 /**

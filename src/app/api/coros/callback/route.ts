@@ -10,14 +10,19 @@ export const maxDuration = 60;
 export async function GET(request: NextRequest) {
   await requireSession();
   const jar = await cookies();
-  const [state, verifier] = jar.get("coros_pkce")?.value.split(".") ?? [];
+  const [state, verifier, clientId] = jar.get("coros_pkce")?.value.split(".") ?? [];
   jar.delete({ name: "coros_pkce", path: "/api/coros" });
   const params = request.nextUrl.searchParams;
   const code = params.get("code");
-  if (!state || !verifier || !code || params.get("state") !== state) {
+  if (!state || !verifier || !clientId || !code || params.get("state") !== state) {
     return NextResponse.redirect(new URL("/?coros=failed", request.url));
   }
-  await exchangeCode(code, verifier);
+  await exchangeCode(
+    code,
+    verifier,
+    clientId,
+    new URL("/api/coros/callback", request.url).toString(),
+  );
   after(() => syncCoros(FIRST_DAY));
   return NextResponse.redirect(new URL("/?coros=connected", request.url));
 }

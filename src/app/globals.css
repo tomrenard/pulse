@@ -476,21 +476,6 @@ input:focus-visible {
   display: block;
   margin: 6px 0;
 }
-.steps {
-  display: flex;
-  gap: 5px;
-  margin: 12px 0 6px;
-}
-.steps i {
-  flex: 1;
-  height: 5px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.18);
-}
-.steps i.on {
-  background: var(--hrv);
-}
-
 /* login */
 .field {
   width: 100%;

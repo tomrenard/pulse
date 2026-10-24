@@ -22,7 +22,7 @@ export async function intervals<T>(path: string, init: RequestInit = {}): Promis
 }
 
 /** Only the given fields change; the day is the record id (YYYY-MM-DD). */
-export type WellnessUpdate = { id: string } & Record<string, number | string | undefined>;
+export type WellnessUpdate = { id: string } & Record<string, number | string | null | undefined>;
 
 export function putWellness(days: WellnessUpdate[]) {
   return intervals("/wellness-bulk", { method: "PUT", body: JSON.stringify(days) });

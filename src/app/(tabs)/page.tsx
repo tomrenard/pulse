@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { syncCoros } from "@/lib/coros/sync";
-import { midpointSpreadMin, SLEEP_NEED_SECS, WORD } from "@/lib/readiness";
+import { MIN_NIGHTS, midpointSpreadMin, WORD } from "@/lib/readiness";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
@@ -20,28 +20,24 @@ export default async function TodayPage() {
   const { ready } = t;
   const word = WORD[ready.state];
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
-  const cond =
-    ready.state === "building"
-      ? `Building your baseline · ${ready.nights} of 14 nights`
+  const cond = ready.stale
+    ? "Too few nights this week to judge"
+    : ready.state === "building"
+      ? `Building your baseline · ${ready.nights} of ${MIN_NIGHTS} nights`
       : `${ready.reasons[0]?.label} · slept ${hm(t.lastNight?.asleepSecs)}`;
-  const spread = midpointSpreadMin(
-    t.nights
-      .slice(-7)
-      .filter((n) => n.sleepStart && n.sleepEnd)
-      .map((n) => ({ start: n.sleepStart as string, end: n.sleepEnd as string })),
-  );
+  const spread = midpointSpreadMin(t.nights.slice(-7));
   return (
     <Sky state={ready.state}>
       <Hero
         place={place}
         word={word}
-        sub={"hrv7" in ready && ready.hrv7 ? `HRV ${Math.round(ready.hrv7)} ms · 7-night` : cond}
+        sub={ready.hrv7 ? `HRV ${Math.round(ready.hrv7)} ms · 7-night` : cond}
       >
         <div className="cond">{cond}</div>
         <div className="hl num">
           RHR {t.lastNight?.rhr ?? "–"} <span>·</span> Form{" "}
           {t.tsb === undefined ? "–" : Math.round(t.tsb)}
-          {"provisional" in ready && ready.provisional ? <span> · provisional</span> : null}
+          {ready.provisional && ready.state !== "building" ? <span> · provisional</span> : null}
         </div>
         {ready.reasons.length > 0 && (
           <div className="chips">
@@ -61,14 +57,14 @@ export default async function TodayPage() {
         notes={t.notes}
         ftp={t.ftp}
       />
-      <HrvList nights={t.nights} normal={"normal" in ready ? ready.normal : undefined} />
+      <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
       <div className="tiles">
-        <SleepTile nights={t.nights} needSecs={SLEEP_NEED_SECS} spread={spread} />
-        <RhrTile nights={t.nights} />
-        <StressTile nights={t.nights} />
+        <SleepTile nights={t.nights} last={t.lastNight} spread={spread} />
+        <RhrTile nights={t.nights} last={t.lastNight} date={t.date} />
+        <StressTile last={t.lastNight} />
         <FormTile ctl={t.ctl} atl={t.atl} tsb={t.tsb} />
       </div>
-      <CorosCard />
+      <CorosCard lastSync={t.lastSync} />
     </Sky>
   );
 }

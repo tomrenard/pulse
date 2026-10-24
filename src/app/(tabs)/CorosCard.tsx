@@ -1,7 +1,5 @@
-import { desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/db/client";
-import { log } from "@/db/schema";
+import type { log } from "@/db/schema";
 import { requireSession } from "@/lib/auth";
 import { corosConnected } from "@/lib/coros/auth";
 import { syncCoros } from "@/lib/coros/sync";
@@ -22,11 +20,8 @@ const when = (d: Date) =>
   });
 
 /** COROS connection state, the last sync, and the buttons to connect or sync now. */
-export async function CorosCard() {
-  const [connected, [last]] = await Promise.all([
-    corosConnected(),
-    db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
-  ]);
+export async function CorosCard({ lastSync: last }: { lastSync?: typeof log.$inferSelect }) {
+  const connected = await corosConnected();
   const failed = last?.detail?.startsWith("error");
   return (
     <section className="mod">

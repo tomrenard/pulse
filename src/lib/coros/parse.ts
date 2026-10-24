@@ -1,28 +1,13 @@
+import type { night } from "@/db/schema";
+
 /**
  * COROS MCP tools answer in formatted text, not JSON. These parsers read that text into one
  * record per wake-up day. When the text has data but nothing parses, they throw: a changed
  * format must stop the sync, never store wrong values.
  */
 
-export type Night = {
-  date: string; // wake-up day, YYYY-MM-DD
-  hrv?: number;
-  hrvLow?: number;
-  hrvHigh?: number;
-  corosBase?: number;
-  corosLow?: number;
-  corosHigh?: number;
-  sleepScore?: number;
-  asleepSecs?: number;
-  deepPct?: number;
-  lightPct?: number;
-  remPct?: number;
-  awakeMin?: number;
-  sleepStart?: string; // local "YYYY-MM-DD HH:mm"
-  sleepEnd?: string;
-  rhr?: number;
-  stress?: number;
-};
+/** A day's COROS values; same fields as the `night` table. */
+export type Night = Omit<typeof night.$inferInsert, "updatedAt">;
 
 const num = (s: string | undefined) => (s === undefined ? undefined : Number(s));
 

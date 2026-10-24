@@ -29,14 +29,15 @@ export async function corosSession(token: string) {
     const text = await res.text();
     if (!res.ok) throw new Error(`COROS MCP ${method} ${res.status}: ${text.slice(0, 200)}`);
     if (notification) return undefined;
-    const json = text.includes("data:")
+    // Server-sent events may carry other messages first; keep the reply to this request.
+    const reply = res.headers.get("content-type")?.includes("text/event-stream")
       ? text
           .split("\n")
           .filter((line) => line.startsWith("data:"))
-          .map((line) => line.slice(5).trim())
-          .join("")
-      : text;
-    const reply = JSON.parse(json);
+          .map((line) => JSON.parse(line.slice(5)))
+          .find((message) => message.id === id)
+      : JSON.parse(text);
+    if (!reply) throw new Error(`COROS MCP ${method}: no reply in event stream`);
     if (reply.error) throw new Error(`COROS MCP ${method}: ${reply.error.message}`);
     return reply.result;
   }

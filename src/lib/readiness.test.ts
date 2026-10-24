@@ -22,8 +22,23 @@ test("steady nights: ready", () => {
   expect(r.reasons.every((x) => !x.flag)).toBe(true);
 });
 
-test("too few nights: building baseline", () => {
-  expect(readiness(nights().slice(0, 10), day(9)).state).toBe("building");
+test("too few nights: building baseline; a week without the watch: stale", () => {
+  const short = readiness(nights().slice(0, 10), day(9));
+  expect(short.state).toBe("building");
+  expect(short.stale).toBe(false);
+  const gap = readiness(nights().slice(0, 24), last);
+  expect(gap.state).toBe("building");
+  expect(gap.stale).toBe(true);
+});
+
+test("no data for last night says so instead of claiming it is fine", () => {
+  const r = readiness(nights().slice(0, 29), last, undefined);
+  expect(r.reasons.map((x) => x.label)).toEqual([
+    "HRV in your normal",
+    "Resting HR: no data",
+    "Sleep: no data",
+    "Form: no data",
+  ]);
 });
 
 test("HRV down for a week: go easy; plus short sleep: rest", () => {
@@ -46,8 +61,8 @@ test("HRV fine but two other flags: go easy", () => {
 
 test("sleep midpoint spread crosses midnight", () => {
   const w = (s: string, e: string) => ({
-    start: `${s < "12:00" ? "2026-10-02" : "2026-10-01"} ${s}`,
-    end: `2026-10-02 ${e}`,
+    sleepStart: `${s < "12:00" ? "2026-10-02" : "2026-10-01"} ${s}`,
+    sleepEnd: `2026-10-02 ${e}`,
   });
   expect(midpointSpreadMin([w("23:00", "07:00"), w("23:00", "07:00"), w("23:00", "07:00")])).toBe(
     0,

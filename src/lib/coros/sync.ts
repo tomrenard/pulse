@@ -1,6 +1,7 @@
 import { getTableColumns, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { log, night } from "@/db/schema";
+import { addDays, today } from "@/lib/date";
 import { putWellness } from "@/lib/intervals";
 import { accessToken } from "./auth.ts";
 import { corosSession } from "./mcp.ts";
@@ -16,14 +17,14 @@ import {
 /** COROS data starts on 2026-10-01 (first nights with the watch). */
 export const FIRST_DAY = "2026-10-01";
 
-export const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
-
-const addDays = (date: string, n: number) =>
-  new Date(Date.parse(`${date}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
 const compact = (date: string) => date.replaceAll("-", "");
 
 /** Pulls COROS days from..to (wake-up days), stores them, and writes the fitting fields to intervals.icu. */
-export async function syncCoros(from = addDays(today(), -2), to = today()) {
+export async function syncCoros(start = addDays(today(), -2), end = today()) {
+  // COROS has nothing before FIRST_DAY or after today; clamping also bounds the call loop.
+  const from = start < FIRST_DAY ? FIRST_DAY : start;
+  // biome-ignore lint/complexity/useMathMinMax: ISO date strings, not numbers
+  const to = end > today() ? today() : end;
   try {
     const tool = await corosSession(await accessToken());
     const lists: Night[][] = [];
