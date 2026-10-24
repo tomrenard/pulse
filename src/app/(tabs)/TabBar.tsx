@@ -74,6 +74,8 @@ export function TabBar() {
   );
 
   useEffect(() => {
+    // Offline copies of opened pages and push both need the service worker.
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
     // Opening the app: pull last night from COROS if it's missing, then show it.
     const pull = () => pullIfStale().then((fresh) => fresh && router.refresh());
     const onShow = () => {

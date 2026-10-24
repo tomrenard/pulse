@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { syncCoros } from "@/lib/coros/sync";
+import { sendMorning } from "@/lib/push";
 
 export const maxDuration = 60;
 
@@ -15,5 +16,7 @@ export async function GET(request: NextRequest) {
   }
   const from = request.nextUrl.searchParams.get("from");
   const days = await syncCoros(from?.match(/^\d{4}-\d{2}-\d{2}$/) ? from : undefined);
-  return Response.json({ days });
+  // The daily run (not a history re-pull) sends the morning notification once last night is in.
+  const pushed = from ? 0 : await sendMorning().catch(() => 0);
+  return Response.json({ days, pushed });
 }

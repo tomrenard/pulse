@@ -5,6 +5,11 @@ const config: NextConfig = {
   async headers() {
     return [
       {
+        // The service worker must be re-checked on every load, or updates never arrive.
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },

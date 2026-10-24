@@ -66,3 +66,11 @@ export const tag = pgTable(
   { date: text("date").notNull(), kind: text("kind").notNull() },
   (t) => [primaryKey({ columns: [t.date, t.kind] })],
 );
+
+/** Web push subscriptions (one per installed device). */
+export const pushSub = pgTable("push_sub", {
+  endpoint: text("endpoint").primaryKey(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

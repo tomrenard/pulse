@@ -29,6 +29,13 @@
       "when": 1792864914520,
       "tag": "0003_fantastic_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792868934973,
+      "tag": "0004_demonic_kat_farrell",
+      "breakpoints": true
     }
   ]
 }

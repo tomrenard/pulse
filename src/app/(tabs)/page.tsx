@@ -2,6 +2,7 @@ import { MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
+import { PushToggle } from "./PushToggle";
 import { Sky } from "./Sky";
 import { HrvList, Signals, Workout } from "./Today";
 import { Volume } from "./Volume";
@@ -38,6 +39,7 @@ export default async function TodayPage() {
       <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
       {/* The COROS card only when something needs you: not connected, or the sync broke. */}
       {(!t.corosConnected || syncFailed) && <CorosCard lastSync={t.lastSync} />}
+      <PushToggle />
     </Sky>
   );
 }
