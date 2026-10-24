@@ -3,6 +3,7 @@ import { addDays } from "./date.ts";
 import {
   formPct,
   formTarget,
+  formZone,
   loadPerHour,
   powerAt,
   powerVsFitness,
@@ -62,4 +63,17 @@ test("power vs ride fitness: fit, clamp, and refuse too little data", () => {
   expect(fit.b).toBeCloseTo(2, 1); // window and CTL dates line up
   expect(powerAt(fit, 1000)).toBeCloseTo(powerAt(fit, fit.maxCtl)); // clamped to seen range
   expect(powerVsFitness(weeks.slice(0, 10), ctl)).toBeUndefined();
+});
+
+test("form zones match intervals.icu's bands", () => {
+  expect([25, 20, 10, 0, -10, -20, -30, -45].map((p) => formZone(p).name)).toEqual([
+    "Transition",
+    "Transition",
+    "Fresh",
+    "Grey zone",
+    "Grey zone",
+    "Optimal",
+    "Optimal",
+    "High risk",
+  ]);
 });

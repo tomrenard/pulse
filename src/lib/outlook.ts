@@ -29,6 +29,17 @@ export function projectFitness(start: string, ctl0: number, atl0: number, loads:
 /** Form as % of fitness, intervals.icu's zones (fresh +5…+20 %, optimal −10…−30 %). */
 export const formPct = (d: { ctl: number; tsb: number }) => (d.ctl > 0 ? (d.tsb / d.ctl) * 100 : 0);
 
+/** intervals.icu's form zones, on form as a % of fitness, top down. */
+export const FORM_ZONES = [
+  { name: "Transition", min: 20, color: "var(--mid)" },
+  { name: "Fresh", min: 5, color: "var(--form)" },
+  { name: "Grey zone", min: -10, color: "rgba(255,255,255,.5)" },
+  { name: "Optimal", min: -30, color: "var(--go)" },
+  { name: "High risk", min: Number.NEGATIVE_INFINITY, color: "var(--stop)" },
+] as const;
+
+export const formZone = (pct: number) => FORM_ZONES.find((z) => pct >= z.min) ?? FORM_ZONES[4];
+
 /**
  * Race-day form target: long events (≥ 4 h) want about neutral to slightly fresh, so fitness
  * isn't lost; short ones tolerate a sharper taper.

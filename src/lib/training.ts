@@ -59,7 +59,12 @@ export async function loadTraining() {
   ]);
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -27));
   const known = wellness.filter((w) => w.ctl != null && w.atl != null);
-  const fitness = known.map((w) => ({ date: w.id, ctl: w.ctl as number, tsb: tsbOf(w) as number }));
+  const fitness = known.map((w) => ({
+    date: w.id,
+    ctl: w.ctl as number,
+    atl: w.atl as number,
+    tsb: tsbOf(w) as number,
+  }));
   const now = known.at(-1);
   return {
     date,

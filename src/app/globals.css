@@ -1461,3 +1461,97 @@ ul.plan-steps {
   width: 22px;
   height: 22px;
 }
+
+/* Fitness & form, intervals.icu style */
+.fit {
+  margin: 4px 0 0;
+}
+.fit-read {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12.5px;
+  color: var(--fg-2);
+  margin-bottom: 10px;
+}
+.fit-read i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.fit-read b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.fit-date {
+  width: 100%;
+  font-weight: 600;
+  color: var(--fg);
+}
+.fit-plot {
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+.fit-panel {
+  position: relative;
+  height: 120px;
+  margin-right: 26px;
+}
+.fit-panel.form {
+  height: 100px;
+  margin-top: 6px;
+}
+.fit-panel svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fit-grid {
+  stroke: var(--hair);
+  vector-effect: non-scaling-stroke;
+}
+.fit-line {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.fit-tick {
+  position: absolute;
+  right: -26px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--fg-3);
+}
+.fit-zone {
+  position: absolute;
+  left: 4px;
+  transform: translateY(-50%);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.fit-panel svg.clip {
+  overflow: hidden;
+}
+.fit-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.fit-months {
+  position: relative;
+  height: 14px;
+  margin: 4px 26px 0 0;
+  font-size: 10.5px;
+  color: var(--fg-3);
+}
+.fit-months span {
+  position: absolute;
+  transform: translateX(-50%);
+}

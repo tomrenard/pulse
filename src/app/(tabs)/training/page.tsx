@@ -4,12 +4,13 @@ import { hm, hmm } from "@/lib/format";
 import { loadReview } from "@/lib/review-load";
 import { loadTraining } from "@/lib/training";
 import { mondayOf, sportOf } from "@/lib/volume";
-import { Forecast, Zones } from "../charts";
+import { Zones } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module, SportChip } from "../ui";
 import { Volume } from "../Volume";
 import { WeekReview } from "../WeekReview";
+import { FitnessChart } from "./FitnessChart";
 
 export default async function TrainingPage() {
   const [t, review] = await Promise.all([loadTraining(), loadReview(today())]);
@@ -72,8 +73,10 @@ export default async function TrainingPage() {
         info={
           <>
             <p>
-              Fitness is your 42-day load average; form is fitness minus 7-day fatigue
-              (intervals.icu).
+              Fitness is your 42-day load average, fatigue your 7-day one; form is fitness minus
+              fatigue (intervals.icu). Form is also shown as a % of fitness, on intervals.icu's
+              zones: optimal −30 to −10 % (building), grey zone −10 to +5 %, fresh +5 to +20 %
+              (race-ready), below −30 % high risk.
             </p>
             <p>
               Ramp is the weekly change in fitness. +5 to +8 a week is a common rule of thumb, not a
@@ -83,7 +86,7 @@ export default async function TrainingPage() {
         }
       >
         <div className="mod-b">
-          <Forecast days={t.fitness} label="Past" />
+          <FitnessChart days={t.fitness} />
         </div>
       </Module>
 
