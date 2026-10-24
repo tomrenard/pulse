@@ -119,6 +119,11 @@ input:focus-visible {
   gap: 12px;
 }
 
+/* Loose text between modules must sit above the fixed sky, like the modules do. */
+.app > p {
+  position: relative;
+}
+
 /* hero */
 .hero {
   position: relative;
@@ -669,6 +674,70 @@ table.records {
 }
 .records td.pb {
   font-weight: 600;
+}
+
+.level .w {
+  font-family: var(--display);
+  font-size: 21px;
+  line-height: 1.15;
+  margin: 2px 0 2px;
+}
+.level .say {
+  margin-top: 6px;
+}
+.meter {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.meter i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--mid);
+}
+.scale {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-size: 14px;
+}
+.scale b {
+  text-align: right;
+}
+.badges {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.badge {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  opacity: 0.6;
+}
+.badge.earned {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+.badge b {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 500;
+}
+.badge span {
+  font-size: 13px;
+  font-weight: 600;
+}
+.badge small {
+  font-size: 11px;
+  color: var(--fg-3);
 }
 
 /* login */

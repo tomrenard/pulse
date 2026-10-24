@@ -1,3 +1,4 @@
+import type { Badge } from "@/lib/badges";
 import { loadRecords, WINDOWS } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
@@ -48,6 +49,54 @@ function Table({
   );
 }
 
+type Level = Awaited<ReturnType<typeof loadRecords>>["pb"];
+
+function LevelCard({ sport, pb, now }: { sport: "run" | "ride"; pb: Level; now: Level }) {
+  const best = pb[sport];
+  const current = now[sport];
+  if (!best) return null;
+  return (
+    <section className="mod tile level" aria-label={`${sport} level`}>
+      <div className="mod-h">{sport === "run" ? "Running" : "Riding"}</div>
+      <div className="mod-b">
+        <div className="w">{best.name}</div>
+        <div className="say dim">{best.real}</div>
+        {best.beats !== undefined && (
+          <div className="say">
+            Faster than ~{best.beats}% of{" "}
+            {sport === "run" ? "male race finishers" : "men 25–34 who train"}
+          </div>
+        )}
+        <div className="say">
+          <b>Now:</b>{" "}
+          {current ? `${current.name} (${Math.round(current.pct)}%)` : "no recent hard effort"}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Badges({ list }: { list: Badge[] }) {
+  return (
+    <Module title="Badges">
+      <div className="mod-b badges">
+        {list.map((b) => (
+          <div key={b.title} className={`badge${b.earned ? " earned" : ""}`}>
+            <b className="num">{b.value}</b>
+            <span>{b.title}</span>
+            {b.progress !== undefined && (
+              <i className="meter">
+                <i style={{ width: `${Math.round(b.progress * 100)}%` }} />
+              </i>
+            )}
+            <small>{b.detail}</small>
+          </div>
+        ))}
+      </div>
+    </Module>
+  );
+}
+
 export default async function RacesPage() {
   const r = await loadRecords();
   const pb5k = r.run[0]?.values[0];
@@ -59,6 +108,41 @@ export default async function RacesPage() {
           FTP {r.ftpSet ?? "–"} W set <span>·</span> {r.ftpModel ?? "–"} W from the last 6 weeks
         </div>
       </Hero>
+
+      <div className="tiles">
+        <LevelCard sport="run" pb={r.pb} now={r.now} />
+        <LevelCard sport="ride" pb={r.pb} now={r.now} />
+      </div>
+      {r.pb.run && r.pb.ride && (
+        <Module title="One scale · % of world class">
+          <div className="mod-b">
+            {(["run", "ride"] as const).map((sp) => {
+              const pct = r.pb[sp]?.pct ?? 0;
+              return (
+                <div key={sp} className="scale">
+                  <span>{sp === "run" ? "Run" : "Ride"}</span>
+                  <i className="meter">
+                    <i
+                      style={{
+                        width: `${Math.min(100, pct)}%`,
+                        background: sp === "run" ? "var(--go)" : "var(--form)",
+                      }}
+                    />
+                  </i>
+                  <b className="num">{Math.round(pct)}%</b>
+                </div>
+              );
+            })}
+            <p className="say dim">
+              Your best run as an age grade, your best ride as W/kg against Coggan's world-class
+              6.4. On this scale 60% is local class, 70% regional, 80% national, 90% world class.{" "}
+              {(r.pb.run?.pct ?? 0) > (r.pb.ride?.pct ?? 0)
+                ? "Running is your stronger side."
+                : "Riding is your stronger side."}
+            </p>
+          </div>
+        </Module>
+      )}
 
       <Module title="Run · best times">
         <div className="mod-b">
@@ -79,6 +163,13 @@ export default async function RacesPage() {
           </p>
         </div>
       </Module>
+
+      <Badges list={r.badges} />
+
+      <p className="say dim" style={{ padding: "0 4px" }}>
+        Sources: WMA/USATF 2025 age-grading tables; Coggan power profile; RunRepeat (35M race
+        results) and Roadman benchmarks for the percentages, which are approximate.
+      </p>
 
       <Module title="Coming next">
         <ul>
