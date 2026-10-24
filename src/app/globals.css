@@ -1,0 +1,315 @@
+/*
+ * iOS Weather look (design/today-mockup.html): a full-bleed sky whose colours follow readiness,
+ * a thin centred hero, translucent rounded modules, a glass bottom bar. Dark only, by choice.
+ */
+:root {
+  --sky-1: #0b2843;
+  --sky-2: #14506e;
+  --sky-3: #2b7d86;
+  --tint: rgba(6, 26, 44, 0.38);
+  --tint-solid: rgba(10, 34, 54, 0.82);
+  --fg: #fff;
+  --fg-2: rgba(255, 255, 255, 0.72);
+  --fg-3: rgba(255, 255, 255, 0.5);
+  --hair: rgba(255, 255, 255, 0.18);
+  --go: #5be3a0;
+  --mid: #f7c55a;
+  --stop: #ff6a6a;
+  --sleep: #a99bff;
+  --hrv: #5fe0d0;
+  --rhr: #ff8fab;
+  --stress: #ffb27a;
+  --form: #7cbcff;
+  --display: -apple-system, "SF Pro Display", system-ui, "Helvetica Neue", sans-serif;
+  --text: -apple-system, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  color-scheme: dark;
+}
+[data-state="mid"] {
+  --sky-1: #2c3463;
+  --sky-2: #a5636a;
+  --sky-3: #e8a865;
+  --tint: rgba(60, 30, 30, 0.34);
+  --tint-solid: rgba(80, 44, 44, 0.84);
+}
+[data-state="stop"] {
+  --sky-1: #120c1b;
+  --sky-2: #33203b;
+  --sky-3: #563049;
+  --tint: rgba(20, 8, 24, 0.42);
+  --tint-solid: rgba(34, 18, 40, 0.86);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  background: #0b2843;
+  color: var(--fg);
+}
+body {
+  font-family: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* sky */
+.sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 55%, var(--sky-3) 100%);
+}
+.sky::before,
+.sky::after {
+  content: "";
+  position: absolute;
+  width: 140%;
+  height: 50%;
+  left: -20%;
+  top: 6%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.1), transparent);
+  animation: drift 70s ease-in-out infinite alternate;
+}
+.sky::after {
+  top: 48%;
+  height: 40%;
+  opacity: 0.7;
+  animation-duration: 95s;
+  animation-direction: alternate-reverse;
+}
+@keyframes drift {
+  from {
+    transform: translateX(-8%);
+  }
+  to {
+    transform: translateX(8%);
+  }
+}
+/* Status bar area keeps the sky's top colour while content scrolls under it. */
+.screen::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 30;
+  background: var(--sky-1);
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px))
+    calc(96px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: grid;
+  gap: 12px;
+}
+
+/* hero */
+.hero {
+  text-align: center;
+  padding: 44px 0 26px;
+  display: grid;
+  gap: 2px;
+}
+.hero .place {
+  font-size: 15px;
+  font-weight: 500;
+}
+.hero .big {
+  font-family: var(--display);
+  font-weight: 200;
+  font-size: 84px;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin: 2px 0 4px;
+}
+.hero .cond {
+  font-size: 19px;
+  font-weight: 500;
+}
+.hero .hl {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--fg-2);
+}
+
+/* modules */
+.mod {
+  position: relative;
+  border-radius: 22px;
+  background: var(--tint-solid);
+  overflow: hidden;
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .mod {
+    background: var(--tint);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+}
+.mod-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.mod-h svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.hair {
+  height: 1px;
+  background: var(--hair);
+  margin: 8px 16px 0;
+}
+.mod-b {
+  padding: 10px 16px 14px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.mod ul {
+  margin: 0;
+  padding: 10px 16px 16px 34px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--fg-2);
+}
+
+/* login */
+.field {
+  width: 100%;
+  font: 500 17px var(--text);
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 13px 14px;
+}
+.btn {
+  width: 100%;
+  font: 600 17px var(--text);
+  color: #0b2843;
+  background: var(--fg);
+  border: 0;
+  border-radius: 14px;
+  padding: 13px;
+  cursor: pointer;
+}
+.err {
+  margin: 0;
+  color: var(--stop);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* bottom bar */
+.bar {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px max(20px, env(safe-area-inset-right, 0px))
+    calc(10px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  background: var(--tint-solid);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .bar {
+    background: rgba(10, 20, 32, 0.35);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+  }
+}
+.ib {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+}
+.ib svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ib.spin svg {
+  transform: rotate(360deg);
+}
+.dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.dots a {
+  height: 22px;
+  min-width: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  font: 600 12px var(--text);
+  text-decoration: none;
+}
+.dots a::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+.dots a[aria-current="page"] {
+  padding: 0 10px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.dots a[aria-current="page"]::before {
+  display: none;
+}
+.dots a span {
+  display: none;
+}
+.dots a[aria-current="page"] span {
+  display: inline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat every rule */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat every rule */
+    transition: none !important;
+  }
+}

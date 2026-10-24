@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+.coros_state.json
+coros_tools.json
+design/
+scripts/coros_spike.py
