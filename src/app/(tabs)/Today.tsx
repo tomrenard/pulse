@@ -1,90 +1,12 @@
 import Link from "next/link";
 import type { night } from "@/db/schema";
-import { addDays, weekday } from "@/lib/date";
+import { weekday } from "@/lib/date";
+import { hmm } from "@/lib/format";
 import { MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
-import { sportOf } from "@/lib/volume";
-import { Delta, Dot, hm, Module } from "./ui";
+import { Delta, Dot, Glyph, hm, Module } from "./ui";
 
 type Night = typeof night.$inferSelect & { tagged?: boolean };
-
-const SPORT: Record<string, React.ReactNode> = {
-  ride: (
-    <>
-      <circle cx="5.5" cy="16" r="3.5" />
-      <circle cx="18.5" cy="16" r="3.5" />
-      <path d="M5.5 16 9 9h6l3.5 7M9 9l3 7h-1M14 5.5h2.5" />
-    </>
-  ),
-  run: (
-    <>
-      <circle cx="14" cy="4.5" r="1.8" />
-      <path d="M6 21l3.5-5 3 2 1-6 3 3h3M8 11l3-3h3" />
-    </>
-  ),
-  swim: (
-    <>
-      <circle cx="16.5" cy="7" r="1.8" />
-      <path d="M3 18c2 0 2-1.5 4.5-1.5S9.5 18 12 18s2-1.5 4.5-1.5S18.5 18 21 18M6 14l4-5 3 3 3-2" />
-    </>
-  ),
-  rest: <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />,
-  other: <circle cx="12" cy="12" r="6" />,
-};
-
-function Icon({ sport }: { sport: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {SPORT[sport]}
-    </svg>
-  );
-}
-
-export function PlanStrip({ date, plan }: { date: string; plan: PlanEvent[] }) {
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(date, i);
-    return { d, event: plan.find((e) => e.start_date_local.startsWith(d)) };
-  });
-  const sessions = plan.length;
-  return (
-    <Module title="Next 7 days · plan">
-      <p className="mod-sum">
-        {sessions
-          ? `${sessions} session${sessions > 1 ? "s" : ""} planned, ${days.filter((x) => !x.event).length} rest days.`
-          : "Nothing planned in intervals.icu for the next 7 days."}
-      </p>
-      {sessions > 0 && (
-        <div className="strip">
-          {days.map(({ d, event }, i) => {
-            const sport = event ? sportOf(event.type) : "rest";
-            return (
-              <div key={d} className={`day${i ? "" : " now"}`}>
-                <span>{i ? weekday(d) : "Today"}</span>
-                <Icon sport={sport} />
-                <span className="load num">{event?.icu_training_load ?? "–"}</span>
-                <small>
-                  {event?.moving_time
-                    ? hm(event.moving_time).replace(" 00m", "h").replace("0h ", "")
-                    : event
-                      ? ""
-                      : "off"}
-                </small>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Module>
-  );
-}
 
 function Profile({ steps, ftp }: { steps: [number, number][]; ftp: number }) {
   const total = steps.reduce((s, [d]) => s + d, 0);
@@ -255,20 +177,6 @@ type Signal = {
   delta?: React.ReactNode;
 };
 
-const glyph = (children: React.ReactNode) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.9"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    {children}
-  </svg>
-);
-
 /**
  * The four readiness signals as glass tiles: value, a state dot, the change against your normal.
  * No words: the hero line says what matters, the tiles show where it comes from.
@@ -295,7 +203,11 @@ export function Signals({
       label: "HRV",
       href: "/health",
       color: "var(--hrv)",
-      icon: glyph(<path d="M2.5 12h4l2-5 3.5 10 2.5-7 1.5 2h5.5" />),
+      icon: (
+        <Glyph width={1.9}>
+          <path d="M2.5 12h4l2-5 3.5 10 2.5-7 1.5 2h5.5" />
+        </Glyph>
+      ),
       value: hrv7 ? `${Math.round(hrv7)}` : "–",
       state: !hrv7 || !hrvNormal ? "go" : hrv7 < hrvNormal.low ? "mid" : "go",
       delta: hrv7 && hrvMid ? <Delta v={hrv7 - hrvMid} good="up" /> : null,
@@ -305,8 +217,10 @@ export function Signals({
       label: "Resting HR",
       href: "/health",
       color: "var(--rhr)",
-      icon: glyph(
-        <path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.4 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />,
+      icon: (
+        <Glyph width={1.9}>
+          <path d="M12 20s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7.4 4.2 4.2 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />
+        </Glyph>
       ),
       value: last?.rhr ? `${last.rhr}` : "–",
       state: last?.rhr && rhr && last.rhr > rhr.high ? "stop" : "go",
@@ -317,8 +231,12 @@ export function Signals({
       label: "Sleep",
       href: "/health",
       color: "var(--sleep)",
-      icon: glyph(<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />),
-      value: asleep ? hm(asleep).replace(" ", "").replace("m", "") : "–",
+      icon: (
+        <Glyph width={1.9}>
+          <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />
+        </Glyph>
+      ),
+      value: asleep ? hmm(asleep) : "–",
       state: asleep && asleep < 0.85 * SLEEP_NEED_SECS ? "mid" : "go",
       delta: asleep ? <Delta v={(asleep - SLEEP_NEED_SECS) / 60} good="up" unit="′" /> : null,
     },
@@ -327,7 +245,11 @@ export function Signals({
       label: "Form",
       href: "/training",
       color: "var(--form)",
-      icon: glyph(<path d="M4 16a8 8 0 0 1 16 0M12 16l4-5" />),
+      icon: (
+        <Glyph width={1.9}>
+          <path d="M4 16a8 8 0 0 1 16 0M12 16l4-5" />
+        </Glyph>
+      ),
       value: tsb === undefined ? "–" : `${Math.round(tsb)}`,
       state: tsb !== undefined && tsb < -30 ? "stop" : "go",
     },
@@ -336,13 +258,13 @@ export function Signals({
     <nav className="signals" aria-label="Readiness signals">
       {signals.map((s) => (
         <Link key={s.key} href={s.href} className="signal" style={{ color: s.color }}>
+          <span className="sr">{s.label}: </span>
           {s.icon}
           <b className="num">{s.value}</b>
           <span className="signal-foot">
             <Dot state={s.state} />
             {s.delta}
           </span>
-          <span className="sr">{s.label}</span>
         </Link>
       ))}
     </nav>

@@ -23,12 +23,12 @@ export function Info({ title, children }: { title: string; children: React.React
           />
         </svg>
       </button>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop tap is a pointer shortcut; Escape and Done close it from the keyboard */}
       <dialog
         ref={sheet}
         className="sheet"
         aria-label={title}
         onClick={(e) => e.target === sheet.current && sheet.current?.close()}
-        onKeyDown={(e) => e.key === "Escape" && sheet.current?.close()}
       >
         <div className="sheet-body">
           <b>{title}</b>

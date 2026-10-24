@@ -12,16 +12,14 @@ export function Module({
   value,
   info,
   children,
-  className = "",
 }: {
   title: string;
   value?: React.ReactNode;
   info?: React.ReactNode;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
-    <section className={`mod ${className}`} aria-label={title}>
+    <section className="mod" aria-label={title}>
       <div className="mod-h">
         <span>{title}</span>
         {value !== undefined && <span className="mod-v num">{value}</span>}
@@ -40,9 +38,13 @@ export function Delta({ v, good, unit = "" }: { v?: number; good: "up" | "down";
   const better = good === "up" ? r > 0 : r < 0;
   return (
     <span className={`delta ${better ? "better" : "worse"}`}>
-      {r > 0 ? "▲" : "▼"}
+      <span aria-hidden="true">{r > 0 ? "▲" : "▼"}</span>
       {Math.abs(r)}
       {unit}
+      <span className="sr">
+        {" "}
+        {r > 0 ? "above" : "below"} normal, {better ? "better" : "worse"}
+      </span>
     </span>
   );
 }
@@ -54,22 +56,17 @@ export const Dot = ({ state }: { state: "go" | "mid" | "stop" }) => (
   </span>
 );
 
-/** A thin bar with a dot at `value` between min and max. */
-export function Gauge({
-  value,
-  min,
-  max,
-  color,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  color: string;
-}) {
-  const pos = `${(((Math.min(max, Math.max(min, value)) - min) / (max - min)) * 100).toFixed(1)}%`;
-  return (
-    <div className="gbar" style={{ background: color }}>
-      <span className="dot" style={{ left: pos }} />
-    </div>
-  );
-}
+/** A 24 × 24 line icon in the current colour (tab bar, signals, activities, badges). */
+export const Glyph = ({ children, width = 1.8 }: { children: React.ReactNode; width?: number }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={width}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {children}
+  </svg>
+);

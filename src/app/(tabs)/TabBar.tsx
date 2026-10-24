@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { pullIfStale } from "./actions";
+import { Glyph } from "./ui";
 
 const TABS = [
   [
@@ -47,20 +48,6 @@ const TABS = [
     </>,
   ],
 ] as const;
-
-const svg = (children: React.ReactNode) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    {children}
-  </svg>
-);
 
 /**
  * iOS 26-style floating glass tab bar: equal-width tabs with labels (nothing shifts when the
@@ -123,7 +110,7 @@ export function TabBar() {
             aria-current={owns(href) ? "page" : undefined}
             onClick={() => setTapped(href)}
           >
-            {svg(glyph)}
+            <Glyph>{glyph}</Glyph>
             <span>{label}</span>
           </Link>
         ))}
@@ -137,12 +124,10 @@ export function TabBar() {
           router.refresh();
         }}
       >
-        {svg(
-          <>
-            <path d="M20 11a8 8 0 1 0-2.3 5.7" />
-            <path d="M20 4v7h-7" />
-          </>,
-        )}
+        <Glyph>
+          <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+          <path d="M20 4v7h-7" />
+        </Glyph>
       </button>
     </nav>
   );

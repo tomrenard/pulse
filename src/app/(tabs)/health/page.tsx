@@ -1,7 +1,7 @@
 import { addDays } from "@/lib/date";
 import { hmm } from "@/lib/format";
 import { loadHealth, TAGS } from "@/lib/health";
-import { mean, midpointSpreadMin, SLEEP_NEED_SECS } from "@/lib/readiness";
+import { MIN_NIGHTS, mean, midpointSpreadMin, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { Bars, Line } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
@@ -26,7 +26,7 @@ export default async function HealthPage() {
   const hrvMid = ready.normal && Math.sqrt(ready.normal.low * ready.normal.high);
   const rhrMid = h.rhr && (h.rhr.low + h.rhr.high) / 2;
   const sub = !ready.normal
-    ? `Learning your normal · ${ready.nights} of 14 nights`
+    ? `Learning your normal · ${ready.nights} of ${MIN_NIGHTS} nights`
     : !ready.hrv7
       ? "Too few nights this week"
       : ready.hrv7 < ready.normal.low
@@ -35,9 +35,11 @@ export default async function HealthPage() {
 
   return (
     <Sky state={ready.state}>
-      <Hero place="Health" word={ready.hrv7 ? `${Math.round(ready.hrv7)} ms` : "–"} sub={sub}>
-        <div className="verdict">{sub}</div>
-      </Hero>
+      <Hero
+        place="Health"
+        word={ready.hrv7 ? `${Math.round(ready.hrv7)} ms` : "–"}
+        sub={sub}
+      ></Hero>
 
       <Module
         title="Tag last night"
@@ -103,11 +105,18 @@ export default async function HealthPage() {
               role="img"
               aria-label={`Last night: deep ${last.deepPct}%, light ${last.lightPct}%, REM ${last.remPct}%`}
             >
-              <i style={{ flex: last.deepPct, background: "#5b4bd6" }}>Deep {last.deepPct}</i>
-              <i style={{ flex: last.lightPct ?? 0, background: "var(--sleep)" }}>
-                Light {last.lightPct}
-              </i>
-              <i style={{ flex: last.remPct ?? 0, background: "#d9a6ff" }}>REM {last.remPct}</i>
+              {(
+                [
+                  ["Deep", last.deepPct, "#5b4bd6"],
+                  ["Light", last.lightPct, "var(--sleep)"],
+                  ["REM", last.remPct, "#d9a6ff"],
+                ] as const
+              ).map(([name, pct, bg]) => (
+                // Full label when it fits, the number alone on a narrow segment, nothing on a sliver.
+                <i key={name} style={{ flex: pct ?? 0, background: bg }}>
+                  {(pct ?? 0) >= 18 ? `${name} ${pct}` : (pct ?? 0) >= 8 ? pct : ""}
+                </i>
+              ))}
             </div>
           )}
           {spread !== undefined && <div className="caption num">±{spread} min bedtime</div>}

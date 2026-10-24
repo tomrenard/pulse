@@ -6,7 +6,7 @@ import { mondayOf, SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Forecast, Zones } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
-import { Module } from "../ui";
+import { Glyph, Module } from "../ui";
 import { Volume } from "../Volume";
 
 const SPORT_GLYPH: Record<string, React.ReactNode> = {
@@ -50,24 +50,14 @@ export default async function TrainingPage() {
             style={{ background: SPORT_COLOR[sport] }}
             aria-hidden="true"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              {SPORT_GLYPH[sport]}
-            </svg>
+            <Glyph width={2}>{SPORT_GLYPH[sport]}</Glyph>
           </span>
           <span className="what">
             <b>{a.name ?? a.type}</b>
             <small>{shortDate(a.start_date_local)}</small>
           </span>
           <span className="num figures">
-            {hm(a.moving_time).replace(" ", "").replace("m", "")}
+            {a.moving_time ? hmm(a.moving_time) : "–"}
             <small>{a.distance ? `${(a.distance / 1000).toFixed(1)} km` : ""}</small>
           </span>
         </Link>
@@ -92,7 +82,6 @@ export default async function TrainingPage() {
           .replace("m", "")}
         sub="this week"
       >
-        <div className="verdict">this week</div>
         <div className="hl num">
           Fitness {t.ctl != null ? Math.round(t.ctl) : "–"} <span>·</span> Form{" "}
           {t.tsb != null ? Math.round(t.tsb) : "–"} <span>·</span> Ramp{" "}

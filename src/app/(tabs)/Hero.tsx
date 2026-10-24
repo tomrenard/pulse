@@ -12,7 +12,7 @@ export function Hero({
   place: string;
   word: string;
   sub: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const hero = useRef<HTMLElement>(null);
   const compact = useRef<HTMLDivElement>(null);
@@ -40,6 +40,7 @@ export function Hero({
       <section className="hero" ref={hero} aria-label="Readiness">
         <div className="place">{place}</div>
         <div className="big">{word}</div>
+        <div className="verdict">{sub}</div>
         {children}
       </section>
     </>

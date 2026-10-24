@@ -1,9 +1,9 @@
 /**
  * Running potential, built to stay honest when recent runs are all easy:
- * - "Now": Runalyze's VO2max from heart rate vs pace on each run (open-source
+ * - "Now": Runalyze's VO2max from heart rate vs pace on each road run (open-source
  *   LegacyEffectiveVO2max): %VO2max = e^((HR/HRmax − 1.00466) / 0.68725), speed at 100 % =
  *   speed / %VO2max, then Daniels' oxygen cost. 30-day average, scaled so your fittest stretch
- *   matches your best performances (the correction Runalyze takes from a race).
+ *   matches your best performance from the same years (the correction Runalyze takes from a race).
  * - "Race day": Tanda 2011 marathon pace from weekly km and training pace (SE ~4–5 min), turned
  *   into a VDOT; you move from Now towards it with a ~10-week time constant (heuristic, labelled).
  * - Times from a VDOT: Daniels & Gilbert, solved for time.
@@ -28,23 +28,35 @@ export function hrVo2(run: Run, hrMax: number) {
   return -4.6 + 0.182258 * v100 + 0.000104 * v100 * v100;
 }
 
-/** 30-day average of HR-based VO2max at each run date (needs 3 runs in the window). */
+/** 30-day average of HR-based VO2max at each run date (needs 5 runs in the window: one odd run can't dominate). */
 export function hrVo2Series(runs: Run[], hrMax: number) {
   const points = runs
     .map((r) => ({ date: r.start_date_local.slice(0, 10), v: hrVo2(r, hrMax) }))
     .filter((p): p is { date: string; v: number } => p.v !== undefined)
     .sort((a, b) => a.date.localeCompare(b.date));
-  return points.flatMap((p) => {
-    const window = points.filter((q) => q.date > addDays(p.date, -30) && q.date <= p.date);
-    return window.length >= 3
-      ? [{ date: p.date, raw: window.reduce((s, q) => s + q.v, 0) / window.length }]
-      : [];
+  // Sliding window over sorted points: O(n), not a re-scan per point.
+  const out: { date: string; raw: number }[] = [];
+  let start = 0;
+  let sum = 0;
+  points.forEach((p, i) => {
+    sum += p.v;
+    const from = addDays(p.date, -30);
+    while ((points[start] as { date: string }).date <= from)
+      sum -= (points[start++] as { v: number }).v;
+    const n = i - start + 1;
+    if (n >= 5) out.push({ date: p.date, raw: sum / n });
   });
+  return out;
 }
 
-/** Scale the series so its best stretch equals your best performance VDOT. */
+/**
+ * Scale the series so its fittest stretch equals your best VDOT from the same years. The
+ * stretch is the 90th percentile of the series, not its single maximum, so one odd window
+ * (a treadmill over-reading, a strap glitch) can't set the scale.
+ */
 export function calibrate(series: { date: string; raw: number }[], bestVdot: number) {
-  const peak = Math.max(...series.map((s) => s.raw));
+  const sorted = series.map((s) => s.raw).sort((a, b) => a - b);
+  const peak = sorted[Math.floor(sorted.length * 0.9)] ?? 0;
   const k = peak > 0 ? bestVdot / peak : 1;
   return series.map((s) => ({ date: s.date, vdot: s.raw * k }));
 }
@@ -77,7 +89,11 @@ export type Anchor = { vdot: number; weeklyKm: number; pace: number };
  */
 export function raceDayVdot(now: number, weeklyKm: number, anchor: Anchor, weeks: number) {
   const support = (km: number) => vdot(42195, tandaMarathon(km, anchor.pace));
-  const ceiling = anchor.vdot * (support(weeklyKm) / support(anchor.weeklyKm));
+  // Capped at your best: more volume than back then is no promise of beating it.
+  const ceiling = Math.min(
+    anchor.vdot,
+    anchor.vdot * (support(weeklyKm) / support(anchor.weeklyKm)),
+  );
   return ceiling - (ceiling - now) * Math.exp(-weeks / 10);
 }
 

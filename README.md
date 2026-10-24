@@ -44,8 +44,8 @@ Every model is documented in its source file, with the method and its limits:
 - **Outlook** (`src/lib/outlook.ts`): Banister fitness/fatigue with intervals.icu's constants;
   power vs fitness fitted on your own history. Each was back-tested against "no change" before it
   was shown; ranges are the 80th percentile of past errors.
-- **VO₂max, critical speed, swim CSS, long-ride physics** (`src/lib/races.ts`): Daniels VDOT,
-  Hawley & Noakes, critical-speed fits with validity checks, and a steady-power physics model.
+- **VO₂max, swim CSS, long-ride physics** (`src/lib/races.ts`): Daniels VDOT, Hawley & Noakes,
+  critical swim speed with a sanity check, and a steady-power physics model.
 
 ## Stack
 

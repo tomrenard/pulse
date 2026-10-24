@@ -1,11 +1,11 @@
 import type { Badge } from "@/lib/badges";
 import { clock as time } from "@/lib/format";
 import { swimCss } from "@/lib/races";
-import { loadRaceExtras } from "@/lib/races-load";
+import { loadSwim } from "@/lib/races-load";
 import { loadRecords } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
-import { Module } from "../ui";
+import { Glyph, Module } from "../ui";
 import { LongRide } from "./LongRide";
 import { RecordBars } from "./RecordBars";
 
@@ -53,7 +53,9 @@ function Level({ r }: { r: Records }) {
               <div className="level-top">
                 <span>{label}</span>
                 <b>{best.name}</b>
-                <span className="num">{Math.round(best.pct)}%</span>
+                <span className="num">
+                  {Math.round(best.pct)}%{now ? <small> · now {Math.round(now.pct)}%</small> : null}
+                </span>
               </div>
               <div className="level-bar" aria-hidden="true">
                 {[60, 70, 80, 90].map((m) => (
@@ -108,20 +110,17 @@ function Badges({ list }: { list: Badge[] }) {
             : undefined
         }
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          {glyphFor(b.title)}
-        </svg>
+        <Glyph>{glyphFor(b.title)}</Glyph>
       </span>
       <b className="num">{b.value}</b>
       <small>{b.title}</small>
+      <span className="sr">
+        {b.earned
+          ? "earned"
+          : b.progress !== undefined
+            ? `${Math.round(b.progress * 100)} % there`
+            : "not yet"}
+      </span>
     </div>
   );
   return (
@@ -151,14 +150,13 @@ function Badges({ list }: { list: Badge[] }) {
 }
 
 export default async function RacesPage() {
-  const [r, x] = await Promise.all([loadRecords(), loadRaceExtras()]);
+  const [r, x] = await Promise.all([loadRecords(), loadSwim()]);
   const pb5k = r.run[0]?.values[0];
   const css = swimCss(x.swim200, x.swim400);
   const vo2 = (v?: number) => (v ? Math.round(v) : "–");
   return (
     <Sky state="go">
       <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km PB">
-        <div className="verdict">5 km PB</div>
         <div className="hl num">
           FTP {r.ftpSet ?? "–"} W <span>· eFTP {r.ftpModel ?? "–"} W</span>
         </div>

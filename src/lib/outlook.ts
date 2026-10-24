@@ -131,7 +131,6 @@ export function powerVsFitness(
   return {
     a,
     b,
-    n: points.length,
     points,
     p80: errors[Math.ceil(errors.length * 0.8) - 1] ?? 0, // nearest-rank 80th percentile
     minCtl: Math.min(...points.map((p) => p.ctl)),
@@ -142,8 +141,7 @@ export function powerVsFitness(
 export type PowerFit = NonNullable<ReturnType<typeof powerVsFitness>>;
 
 /** Ride fitness clamped to the range you have actually been in. */
-export const clampCtl = (fit: PowerFit, ctl: number) =>
-  Math.min(fit.maxCtl, Math.max(fit.minCtl, ctl));
+const clampCtl = (fit: PowerFit, ctl: number) => Math.min(fit.maxCtl, Math.max(fit.minCtl, ctl));
 
 /** Typical 20-min best at a ride fitness, from your history. */
 export const powerAt = (fit: PowerFit, ctl: number) => fit.a + fit.b * clampCtl(fit, ctl);

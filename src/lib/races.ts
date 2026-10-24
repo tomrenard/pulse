@@ -5,9 +5,6 @@ import { linearFit } from "./readiness.ts";
  * - Running VO2max: Daniels & Gilbert VDOT from a best effort (5 km to half marathon).
  * - Cycling VO2max: Hawley & Noakes 1992, VO2max (L/min) = 0.01141 × W(5 min) + 0.435.
  * - Swim CSS: (400 − 200) / (t400 − t200), only if both times are humanly possible.
- * - 5 km / 10 km from critical speed: d = CS·t + D′ on 3–15 min best efforts of the last
- *   12 weeks (≥ 3 points, longest ≥ 2× shortest, from ≥ 2 runs, D′ 100–400 m so the efforts
- *   were near all-out); shown ±6 % (back-test on own races, widened after review).
  */
 
 /** Daniels VDOT from a performance: distance (m) and time (s). */
@@ -47,36 +44,6 @@ export function swimCss(t200?: number, t400?: number): { per100: number } | { pr
   }
   return { per100: (t400 - t200) / 2 };
 }
-
-type Point = { distance: number; secs: number; activity: string };
-
-/** Critical speed (m/s) and D′ (m) from best efforts, or why there's no valid fit. */
-export function criticalSpeed(
-  points: Point[],
-): { cs: number; dPrime: number } | { problem: string } {
-  const pts = points.filter((p) => p.secs >= 180 && p.secs <= 900);
-  if (pts.length < 3) return { problem: "Needs best efforts between 3 and 15 min." };
-  const shortest = Math.min(...pts.map((p) => p.secs));
-  const longest = Math.max(...pts.map((p) => p.secs));
-  if (longest < 2 * shortest) return { problem: "Needs efforts of more different lengths." };
-  // One run's pace fade alone gives absurd speeds (back-test): the points must span 2 runs.
-  if (new Set(pts.map((p) => p.activity)).size < 2) {
-    return { problem: "Needs hard efforts from at least 2 different runs in 12 weeks." };
-  }
-  const { a: dPrime, b: cs } = linearFit(
-    pts.map((p) => p.secs),
-    pts.map((p) => p.distance),
-  );
-  if (!(cs > 0)) return { problem: "The efforts don't fit the model." };
-  // A D′ under ~100 m means the efforts weren't all-out (review of the back-test: median 73 m).
-  if (dPrime < 100 || dPrime > 400) {
-    return { problem: "Recent efforts look easier than all-out, so a race estimate would be off." };
-  }
-  return { cs, dPrime };
-}
-
-export const predictTime = (fit: { cs: number; dPrime: number }, metres: number) =>
-  (metres - fit.dPrime) / fit.cs;
 
 /** COROS fitness overview text → numbers (seconds for times and pace per km). */
 export function parseCorosFitness(text: string) {
@@ -167,7 +134,8 @@ export function rideTime(route: Stretch[], s: RideSetup) {
 
 /**
  * Sport and distance of a planned race, from intervals.icu's fields or its name when they're empty
- * ("S25 Berlin 10k", "Hamburg Open Standard Triathlon").
+ * ("S25 Berlin 10k", "Hamburg Open Standard Triathlon"). The event type wins over the name, so
+ * a "Radmarathon" ride stays a ride.
  */
 export function raceInfo(e: {
   name?: string;
@@ -176,22 +144,23 @@ export function raceInfo(e: {
   distance_target?: number;
 }) {
   const name = (e.name ?? "").toLowerCase();
+  const type = (e.type ?? "").toLowerCase();
   const metres = e.distance ?? e.distance_target;
-  if (/tri(athlon)?\b|ironman|70\.3/.test(name)) {
-    const sprint = /sprint/.test(name);
-    return {
-      sport: "tri" as const,
-      metres: undefined,
-      label: sprint
-        ? "Sprint triathlon"
-        : /half|70\.3/.test(name)
-          ? "Half distance"
-          : /ironman|full/.test(name)
-            ? "Full distance"
-            : "Olympic triathlon",
-    };
+  if (/\btri(athlon)?\b|ironman|70\.3/.test(name)) {
+    const label = /sprint/.test(name)
+      ? "Sprint triathlon"
+      : /half|70\.3/.test(name)
+        ? "Half distance"
+        : /ironman|full/.test(name)
+          ? "Full distance"
+          : "Olympic triathlon";
+    return { sport: "tri" as const, metres: undefined, label };
   }
-  if (/run/i.test(e.type ?? "") || /\b(\d+(?:\.\d+)?)\s?k(m)?\b|marathon|half/.test(name)) {
+  if (/ride|bike|cycl/.test(type) || (!type && /fondo|gravel|rad|tour/.test(name))) {
+    return { sport: "ride" as const, metres, label: /fondo/.test(name) ? "Gran fondo" : "Ride" };
+  }
+  if (/swim/.test(type)) return { sport: "other" as const, metres, label: "Swim" };
+  if (!type || /run/.test(type)) {
     const km = name.match(/\b(\d+(?:\.\d+)?)\s?k(m)?\b/)?.[1];
     const d =
       metres ??
@@ -199,21 +168,19 @@ export function raceInfo(e: {
         ? Number(km) * 1000
         : /half/.test(name)
           ? 21097.5
-          : /marathon/.test(name)
+          : /marathon/.test(name) && !/relay|staffel/.test(name)
             ? 42195
             : undefined);
-    if (/run/i.test(e.type ?? "") || d)
-      return {
-        sport: "run" as const,
-        metres: d,
-        label: d ? `${d >= 42000 ? "Marathon" : d >= 21000 ? "Half" : `${d / 1000} km`}` : "Run",
-      };
+    if (/run/.test(type) || d) {
+      const label = !d
+        ? "Run"
+        : Math.abs(d - 42195) < 200
+          ? "Marathon"
+          : Math.abs(d - 21097.5) < 100
+            ? "Half"
+            : `${d / 1000} km`;
+      return { sport: "run" as const, metres: d, label };
+    }
   }
-  return {
-    sport: /ride|bike|fondo|gravel|tour/i.test(`${e.type} ${name}`)
-      ? ("ride" as const)
-      : ("other" as const),
-    metres,
-    label: /fondo/.test(name) ? "Gran fondo" : (e.type ?? "Race"),
-  };
+  return { sport: "other" as const, metres, label: e.type ?? "Race" };
 }

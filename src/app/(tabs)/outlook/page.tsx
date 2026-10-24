@@ -2,7 +2,7 @@ import { addDays, daysBetween, shortDate } from "@/lib/date";
 import { hmm } from "@/lib/format";
 import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
-import { loadRaceExtras } from "@/lib/races-load";
+import { loadCoros } from "@/lib/races-load";
 import { SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Scatter } from "../charts";
 import { Hero } from "../Hero";
@@ -12,16 +12,11 @@ import { Potential } from "./Potential";
 import { WhatIf } from "./WhatIf";
 
 const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
-const SPORT_TINT = {
-  run: "var(--go)",
-  ride: "var(--form)",
-  tri: "var(--hrv)",
-  other: "rgba(255,255,255,.45)",
-};
+const SPORT_TINT = { ...SPORT_COLOR, tri: SPORT_COLOR.swim };
 
 export default async function OutlookPage() {
-  const [o, x] = await Promise.all([loadOutlook(), loadRaceExtras()]);
-  const next = o.race;
+  const [o, coros] = await Promise.all([loadOutlook(), loadCoros()]);
+  const next = o.races[0];
   const runRace = o.races.find((r) => r.info.sport === "run" && r.info.metres);
   const known = o.ctl !== undefined && o.atl !== undefined;
 
@@ -55,18 +50,15 @@ export default async function OutlookPage() {
       : [];
   const raceDay = plan.find((d) => d.date === raceDate);
   const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
-  const corosTimes = x.coros
-    ? [x.coros.k5, x.coros.k10, x.coros.half, x.coros.marathon]
-    : undefined;
+  const corosTimes = coros ? [coros.k5, coros.k10, coros.half, coros.marathon] : undefined;
 
   return (
     <Sky state="go">
       <Hero
         place="Outlook"
-        word={next ? `${horizon} days` : "No race"}
+        word={next ? `${horizon} ${horizon === 1 ? "day" : "days"}` : "No race"}
         sub={next?.name ?? "Add a race in intervals.icu"}
       >
-        <div className="verdict">{next ? next.name : "Add a race in intervals.icu"}</div>
         {next && (
           <div className="hl num">
             {next.info.label} <span>· {shortDate(next.start_date_local)}</span>
@@ -130,7 +122,7 @@ export default async function OutlookPage() {
             anchor={o.potential.anchor}
             weeklyKm={o.potential.weeklyKm}
             weeks={runRace ? daysBetween(o.date, runRace.start_date_local.slice(0, 10)) / 7 : 12}
-            race={runRace ? { label: runRace.info.label, metres: runRace.info.metres } : undefined}
+            race={runRace?.info}
           />
         </div>
       </Module>

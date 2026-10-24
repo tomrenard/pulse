@@ -219,7 +219,7 @@ export function Zones({ secs, label }: { secs: number[]; label: string }) {
           x > 0 ? (
             // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
             <i key={i} style={{ flex: x, background: ZONE_COLORS[i] }}>
-              {(pct[i] ?? 0) >= 10 ? `Z${i + 1} ${pct[i]}%` : ""}
+              {(pct[i] ?? 0) >= 18 ? `Z${i + 1} ${pct[i]}%` : (pct[i] ?? 0) >= 8 ? `Z${i + 1}` : ""}
             </i>
           ) : null,
         )}
@@ -249,7 +249,7 @@ export function Scatter({
     <figure className="chart">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
+        style={{ height: "auto" }}
         role="img"
         aria-label={`${points.length} weeks of ride fitness against best 20-minute power`}
       >

@@ -35,8 +35,8 @@ test("HR-based VO2max: harder effort at the same pace reads lower fitness", () =
   expect(hrVo2({ ...run(140), moving_time: 600 }, 196)).toBeUndefined(); // too short to say
 });
 
-test("series needs 3 runs in 30 days; calibration maps the peak to the best VDOT", () => {
-  const runs = [1, 5, 9, 13].map((d) => ({
+test("series needs 5 runs in 30 days; calibration maps the fittest stretch to the best VDOT", () => {
+  const runs = [1, 4, 7, 10, 13, 16].map((d) => ({
     start_date_local: `2026-10-${String(d).padStart(2, "0")}`,
     distance: 10000,
     moving_time: 3000,
@@ -44,13 +44,21 @@ test("series needs 3 runs in 30 days; calibration maps the peak to the best VDOT
   }));
   const series = hrVo2Series(runs, 196);
   expect(series).toHaveLength(2);
+  expect(hrVo2Series(runs.slice(0, 4), 196)).toHaveLength(0);
   const cal = calibrate(series, 57);
   expect(Math.max(...cal.map((c) => c.vdot))).toBeCloseTo(57);
+  // An odd window can't set the scale: the 90th percentile does.
+  const odd = calibrate(
+    [...Array.from({ length: 19 }, (_, i) => ({ date: `d${i}`, raw: 50 })), { date: "x", raw: 80 }],
+    57,
+  );
+  expect(odd[0]?.vdot).toBeCloseTo(57);
 });
 
 test("race day: back to PB level at PB-era volume, less with less, never below now by default", () => {
   const anchor = { vdot: 57, weeklyKm: 50, pace: 300 };
   expect(raceDayVdot(47, 50, anchor, 1000)).toBeCloseTo(57); // long enough at the old volume: PB level
+  expect(raceDayVdot(47, 100, anchor, 1000)).toBeCloseTo(57); // more volume: capped at the PB
   const less = raceDayVdot(47, 25, anchor, 1000);
   expect(less).toBeLessThan(57);
   expect(less).toBeGreaterThan(47); // half the volume still beats a 47 now

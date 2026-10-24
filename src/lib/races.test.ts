@@ -1,10 +1,8 @@
 import { expect, test } from "vitest";
 import {
   bestVdot,
-  criticalSpeed,
   cyclingVo2,
   parseCorosFitness,
-  predictTime,
   raceInfo,
   rideTime,
   stretches,
@@ -34,35 +32,6 @@ test("swim CSS refuses impossible times", () => {
   expect(swimCss(200, 420)).toEqual({ per100: 110 });
   expect(swimCss(150, 290)).toHaveProperty("problem"); // CSS faster than the 200 m pace
   expect(swimCss(undefined, 420)).toHaveProperty("problem");
-});
-
-test("critical speed needs real hard efforts from 2 runs", () => {
-  const pts = (activity: string, list: [number, number][]) =>
-    list.map(([distance, secs]) => ({ distance, secs, activity }));
-  // CS 4 m/s, D' 200 m
-  const good = [
-    ...pts("a", [
-      [920, 180],
-      [1400, 300],
-    ]),
-    ...pts("b", [
-      [2600, 600],
-      [3800, 900],
-    ]),
-  ];
-  const fit = criticalSpeed(good);
-  expect(fit).toMatchObject({ cs: expect.closeTo(4, 5), dPrime: expect.closeTo(200, 3) });
-  if ("cs" in fit) expect(predictTime(fit, 5000)).toBeCloseTo(1200);
-  expect(
-    criticalSpeed(
-      pts("a", [
-        [920, 180],
-        [1400, 300],
-        [2600, 600],
-      ]),
-    ),
-  ).toHaveProperty("problem"); // one run
-  expect(criticalSpeed(pts("a", [[920, 180]]))).toHaveProperty("problem");
 });
 
 test("COROS fitness overview parses, and fails loud on a new format", () => {
@@ -127,5 +96,25 @@ test("race info from names when intervals.icu has no distance", () => {
     sport: "ride",
     label: "Gran fondo",
   });
-  expect(raceInfo({ name: "City Half Marathon" })).toMatchObject({ sport: "run", metres: 21097.5 });
+  expect(raceInfo({ name: "City Half Marathon" })).toMatchObject({
+    sport: "run",
+    metres: 21097.5,
+    label: "Half",
+  });
+  // The type wins over the name.
+  expect(raceInfo({ name: "Cyclassics Hamburg 160 km", type: "Ride" })).toMatchObject({
+    sport: "ride",
+  });
+  expect(raceInfo({ name: "MTB Marathon Harz", type: "MountainBikeRide" })).toMatchObject({
+    sport: "ride",
+  });
+  expect(raceInfo({ name: "Swim 3.8 km", type: "Swim" })).toMatchObject({ sport: "other" });
+  expect(raceInfo({ name: "Trail 50k", type: "Run" })).toMatchObject({
+    metres: 50000,
+    label: "50 km",
+  });
+  expect(raceInfo({ name: "Marathon relay", type: "Run" })).toMatchObject({
+    sport: "run",
+    metres: undefined,
+  });
 });

@@ -1,4 +1,4 @@
-import { rhrNormal, WORD } from "@/lib/readiness";
+import { MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
@@ -18,13 +18,12 @@ export default async function TodayPage() {
   const verdict = ready.stale
     ? "Too few nights this week to judge"
     : ready.state === "building"
-      ? `Learning your normal · ${ready.nights} of 14 nights`
+      ? `Learning your normal · ${ready.nights} of ${MIN_NIGHTS} nights`
       : (flagged ?? "All signals in range") + (ready.provisional ? " · early read" : "");
   const syncFailed = t.lastSync?.detail?.startsWith("error");
   return (
     <Sky state={ready.state}>
       <Hero place={place} word={WORD[ready.state]} sub={verdict}>
-        <div className="verdict">{verdict}</div>
         {t.lastSync && !syncFailed && <div className="synced">Synced {time(t.lastSync.at)}</div>}
       </Hero>
       <Signals
@@ -34,13 +33,7 @@ export default async function TodayPage() {
         rhr={rhrNormal(t.nights, t.date)}
         tsb={t.tsb}
       />
-      <Workout
-        event={t.plan.find(
-          (e) => e.start_date_local.startsWith(t.date) && e.category === "WORKOUT",
-        )}
-        notes={t.notes}
-        ftp={t.ftp}
-      />
+      <Workout event={t.workout} notes={t.notes} ftp={t.ftp} />
       <Volume weeks={t.volume} href="/training" />
       <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
       {/* The COROS card only when something needs you: not connected, or the sync broke. */}

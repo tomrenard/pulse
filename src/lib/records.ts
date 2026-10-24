@@ -3,7 +3,7 @@ import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "@/lib/level";
 import { orNothing } from "@/lib/nights";
-import { bestVdot, cyclingVo2 } from "@/lib/races";
+import { cyclingVo2 } from "@/lib/races";
 
 /** Record windows, as intervals.icu curve ids: all time, 1 year, 6 months, 6 weeks. */
 export const WINDOWS = [
@@ -13,7 +13,7 @@ export const WINDOWS = [
   ["42d", "6 wk"],
 ] as const;
 
-const RUN_DISTANCES = [
+export const RUN_DISTANCES = [
   [5000, "5 km"],
   [10000, "10 km"],
   [21097.5, "Half"],
@@ -99,11 +99,10 @@ export async function loadRecords() {
       ride: rideG && { ...rideG, beats: beatsText(rideBeats(rideG.wkg)) },
     };
   };
-  /** VO2max estimates per window: running VDOT and cycling Hawley & Noakes. */
+  /** Ride VO2max per window (Hawley & Noakes). */
   const vo2 = WINDOWS.map(([id], w) => {
     const c = powerAt(id);
     return {
-      run: bestVdot(run.map((r) => ({ distance: r.distance, secs: r.values[w] }))),
       ride: cyclingVo2(at(c?.secs, c?.watts, 300), at(c?.secs, c?.watts_per_kg, 300)),
     };
   });

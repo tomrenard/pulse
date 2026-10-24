@@ -20,6 +20,9 @@ export type Badge = {
 
 const km = (m: number) => Math.round(m / 1000).toLocaleString("en-GB");
 
+/** The ultra the longest ride is measured against (BER–CPH). */
+const goalKm = 735;
+
 /** Fun milestones from the activity list (records live on their own bars). `goalKm`: the ultra goal. */
 export function badges(activities: BadgeActivity[], today: string, goalKm = 735): Badge[] {
   const rides = activities.filter((a) => sportOf(a.type) === "ride");

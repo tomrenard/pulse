@@ -7,9 +7,8 @@ import { orNothing } from "@/lib/nights";
 import { type Activity, loadPerHour, powerVsFitness, rideCtlByDay } from "@/lib/outlook";
 import { calibrate, hrVo2Series, type Run, volumeBefore } from "@/lib/potential";
 import { bestVdot, raceInfo } from "@/lib/races";
-import { at, HOUR, type PaceCurve } from "@/lib/records";
+import { at, HOUR, type PaceCurve, RUN_DISTANCES } from "@/lib/records";
 import type { PlanEvent } from "@/lib/today";
-import { mondayOf } from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Curve = { start_date_local: string; secs?: number[]; watts?: number[] };
@@ -19,7 +18,6 @@ const DAY = 24 * 3600;
 const POWER_FROM = "2025-01-06";
 /** Loads and runs since 2023: heart rate on runs starts then (the potential model's history). */
 const LOADS_FROM = "2023-01-01";
-const RUN_DISTANCES = [5000, 10000, 21097.5, 42195];
 
 /** Weekly best 20-min power (Mon–Sun) since POWER_FROM, 13 weeks per call, cached a day. */
 async function weeklyBest20(until: string) {
@@ -69,10 +67,15 @@ export async function loadOutlook() {
     // Weeks are Mondays from POWER_FROM: up to a week ago means only finished weeks.
     weeklyBest20(addDays(date, -7)),
     orNothing(intervals<{ sportSettings?: { types?: string[]; max_hr?: number }[] }>(""), {}),
-    orNothing(intervals<{ list: PaceCurve[] }>("/pace-curves.json?type=Run&curves=all", HOUR), {
-      list: [],
-    }),
-    db().select({ n: count() }).from(night).where(isNotNull(night.hrv)),
+    // Bests from the same years as the heart-rate data: an older PB would inflate "now".
+    orNothing(
+      intervals<{ list: PaceCurve[] }>(
+        `/pace-curves.json?type=Run&curves=all,r.${LOADS_FROM}.${date}`,
+        HOUR,
+      ),
+      { list: [] },
+    ),
+    orNothing(db().select({ n: count() }).from(night).where(isNotNull(night.hrv)), [{ n: 0 }]),
   ]);
   const w = wellness[0];
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -84));
@@ -83,11 +86,13 @@ export async function loadOutlook() {
     .map((e) => ({ ...e, info: raceInfo(e) }));
 
   // Running potential: HR-based fitness now, calibrated so your fittest stretch = your best VDOT.
-  const runs = activities.filter((a) => /run/i.test(a.type ?? ""));
+  // Road runs only: trail and treadmill pace says little about fitness.
+  const runs = activities.filter((a) => a.type === "Run");
   const hrMax = athlete.sportSettings?.find((x) => x.types?.includes("Run"))?.max_hr ?? 0;
-  const all = pace.list[0];
-  const pbTimes = RUN_DISTANCES.map((d) => at(all?.distance, all?.values, d));
-  const pbVdot = bestVdot(RUN_DISTANCES.map((d, i) => ({ distance: d, secs: pbTimes[i] })));
+  const [all, era] = pace.list;
+  const pbTimes = RUN_DISTANCES.map(([d]) => at(all?.distance, all?.values, d));
+  const eraTimes = RUN_DISTANCES.map(([d]) => at(era?.distance, era?.values, d));
+  const pbVdot = bestVdot(RUN_DISTANCES.map(([d], i) => ({ distance: d, secs: eraTimes[i] })));
   const series = hrMax && pbVdot ? calibrate(hrVo2Series(runs, hrMax), pbVdot) : [];
   const last = series.at(-1);
   // Your fittest stretch: the volume and pace you were running then anchor race-day potential.
@@ -107,21 +112,15 @@ export async function loadOutlook() {
     runRate: loadPerHour(recent, "run", 60),
     workouts: events.filter((e) => e.category === "WORKOUT"),
     races,
-    race: races[0],
     hrvNights: hrv?.n ?? 0,
     potential: {
       // Stale after 30 days without a qualifying run: then there's no "now".
       now: last && last.date >= addDays(date, -30) ? last.vdot : undefined,
       pbVdot,
+      /** All-time bests: the white ticks. */
       pbTimes,
       weeklyKm: runNow.weeklyKm,
       anchor: peak && pbVdot ? { vdot: pbVdot, ...volumeBefore(runs, peak.date) } : undefined,
-      // Weekly HR-based VDOT for the trend line (last 52 weeks).
-      trend: [
-        ...new Map(
-          series.filter((p) => p.date >= addDays(date, -364)).map((p) => [mondayOf(p.date), p]),
-        ).values(),
-      ],
     },
     power: powerVsFitness(weeks, rideCtl),
     recentBest20: Math.max(0, ...weeks.slice(-6).map((x) => x.best20 ?? 0)),
