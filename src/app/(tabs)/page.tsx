@@ -1,4 +1,5 @@
 import { MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
+import { loadReview } from "@/lib/review-load";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
@@ -6,12 +7,16 @@ import { PushToggle } from "./PushToggle";
 import { Sky } from "./Sky";
 import { HrvList, Signals, Workout } from "./Today";
 import { Volume } from "./Volume";
+import { WeekReview } from "./WeekReview";
 
 const time = (d: Date) =>
   d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 export default async function TodayPage() {
   const t = await loadToday();
+  // Sunday and Monday only: the week just ending or just ended.
+  const day = new Date(`${t.date}T12:00:00Z`).getUTCDay();
+  const review = day === 0 || day === 1 ? await loadReview(t.date) : undefined;
   const { ready } = t;
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
   // One line: what matters today. The signal tiles below show where it comes from.
@@ -35,6 +40,7 @@ export default async function TodayPage() {
         tsb={t.tsb}
       />
       <Workout event={t.workout} notes={t.notes} ftp={t.ftp} />
+      {review && <WeekReview r={review} />}
       <Volume weeks={t.volume} href="/training" />
       <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
       {/* The COROS card only when something needs you: not connected, or the sync broke. */}

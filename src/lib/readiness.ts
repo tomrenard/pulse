@@ -49,7 +49,7 @@ const within = (n: NightInput, date: string, days: number) =>
   n.date > addDays(date, -days) && n.date <= date;
 
 /** Your HRV normal band in ms (back-transformed from ln), from the 60 days up to `date`. */
-function hrvNormal(nights: NightInput[], date: string) {
+export function hrvNormal(nights: NightInput[], date: string) {
   const lns = nights
     .filter((n) => n.hrv && !n.tagged && within(n, date, 60))
     .map((n) => Math.log(n.hrv as number));
@@ -65,7 +65,7 @@ function hrvNormal(nights: NightInput[], date: string) {
 }
 
 /** 7-night ln mean ending on `date`, or undefined with fewer than 4 nights. */
-function ln7(nights: NightInput[], date: string) {
+export function ln7(nights: NightInput[], date: string) {
   const lns = nights
     .filter((n) => n.hrv && within(n, date, 7))
     .map((n) => Math.log(n.hrv as number));

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { shortDate } from "@/lib/date";
+import { shortDate, today } from "@/lib/date";
 import { hm, hmm } from "@/lib/format";
+import { loadReview } from "@/lib/review-load";
 import { loadTraining } from "@/lib/training";
 import { mondayOf, SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Forecast, Zones } from "../charts";
@@ -8,6 +9,7 @@ import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Glyph, Module } from "../ui";
 import { Volume } from "../Volume";
+import { WeekReview } from "../WeekReview";
 
 const SPORT_GLYPH: Record<string, React.ReactNode> = {
   ride: (
@@ -30,7 +32,7 @@ const SPORT_GLYPH: Record<string, React.ReactNode> = {
 };
 
 export default async function TrainingPage() {
-  const t = await loadTraining();
+  const [t, review] = await Promise.all([loadTraining(), loadReview(today())]);
   const week = t.year.at(-1)?.sports;
   const hours = week ? Object.values(week).reduce((s, x) => s + x.hours, 0) : 0;
   // Last 3 weeks of activities, grouped Monday to Sunday; older ones behind "Show more".
@@ -88,6 +90,8 @@ export default async function TrainingPage() {
           {t.ramp != null ? `${t.ramp > 0 ? "+" : ""}${t.ramp.toFixed(1)}/wk` : "–"}
         </div>
       </Hero>
+
+      <WeekReview r={review} />
 
       <Module
         title="Fitness & form · 6 months"
