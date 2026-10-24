@@ -1,6 +1,8 @@
+import { linearFit } from "./readiness.ts";
+
 /**
  * Race-tab estimates. Each says where it comes from; none is shown when its data is too thin.
- * - Running VO2max: Daniels & Gilbert VDOT from a best effort (1.5 km to half marathon).
+ * - Running VO2max: Daniels & Gilbert VDOT from a best effort (5 km to half marathon).
  * - Cycling VO2max: Hawley & Noakes 1992, VO2max (L/min) = 0.01141 × W(5 min) + 0.435.
  * - Swim CSS: (400 − 200) / (t400 − t200), only if both times are humanly possible.
  * - 5 km / 10 km from critical speed: d = CS·t + D′ on 3–15 min best efforts of the last
@@ -34,13 +36,11 @@ export function cyclingVo2(watts?: number, wkg?: number) {
 }
 
 /** Critical swim speed in s/100 m, or a reason when the times can't be real (wrong pool length). */
-export function swimCss(
-  t200?: number,
-  t400?: number,
-): { per100: number } | { problem: string } | undefined {
-  if (!t200 || !t400) return undefined;
+export function swimCss(t200?: number, t400?: number): { per100: number } | { problem: string } {
+  if (!t200 || !t400) return { problem: "Needs a best 200 m and 400 m swim." };
   // World records: ~1:41 for 200 m, ~3:40 for 400 m. Anything faster is a recording error.
-  if (t200 < 95 || t400 < 210 || t400 <= t200) {
+  // A 400 m can't be swum at a faster pace than a 200 m: t400 must exceed twice t200.
+  if (t200 < 95 || t400 < 210 || t400 <= 2 * t200) {
     return {
       problem: `Swim bests look off (200 m in ${t200} s): check the pool length on your swims.`,
     };
@@ -63,12 +63,10 @@ export function criticalSpeed(
   if (new Set(pts.map((p) => p.activity)).size < 2) {
     return { problem: "Needs hard efforts from at least 2 different runs in 12 weeks." };
   }
-  const n = pts.length;
-  const mt = pts.reduce((s, p) => s + p.secs, 0) / n;
-  const md = pts.reduce((s, p) => s + p.distance, 0) / n;
-  const stt = pts.reduce((s, p) => s + (p.secs - mt) ** 2, 0);
-  const cs = pts.reduce((s, p) => s + (p.secs - mt) * (p.distance - md), 0) / stt;
-  const dPrime = md - cs * mt;
+  const { a: dPrime, b: cs } = linearFit(
+    pts.map((p) => p.secs),
+    pts.map((p) => p.distance),
+  );
   if (!(cs > 0)) return { problem: "The efforts don't fit the model." };
   // A D′ under ~100 m means the efforts weren't all-out (review of the back-test: median 73 m).
   if (dPrime < 100 || dPrime > 400) {
@@ -90,11 +88,8 @@ export function parseCorosFitness(text: string) {
     const m = text.match(new RegExp(`^${label}: (\\d+(?:\\.\\d+)?)`, "m"));
     return m ? Number(m[1]) : undefined;
   };
-  const pace = text.match(/Threshold Pace: (\d+):(\d+)/);
   const out = {
     vo2max: num("VO2max"),
-    runningLevel: num("Running Level"),
-    thresholdPerKm: pace ? Number(pace[1]) * 60 + Number(pace[2]) : undefined,
     k5: time("5 km Prediction"),
     k10: time("10 km Prediction"),
     half: time("Half Marathon Prediction"),
@@ -120,7 +115,9 @@ const haversine = (a: [number, number], b: [number, number]) => {
 };
 
 /** GPX track points [lat, lon, ele] → ~100 m stretches (smooths GPS elevation noise). */
-export function stretches(points: [number, number, number][], every = 100): Stretch[] {
+const STRETCH_M = 100;
+
+export function stretches(points: [number, number, number][]): Stretch[] {
   const out: Stretch[] = [];
   let start = points[0];
   let metres = 0;
@@ -128,7 +125,7 @@ export function stretches(points: [number, number, number][], every = 100): Stre
     const prev = points[i - 1] as [number, number, number];
     const p = points[i] as [number, number, number];
     metres += haversine([prev[0], prev[1]], [p[0], p[1]]);
-    if (metres >= every || i === points.length - 1) {
+    if (metres >= STRETCH_M || i === points.length - 1) {
       if (start && metres > 0) out.push({ metres, grade: (p[2] - start[2]) / metres });
       start = p;
       metres = 0;
@@ -137,7 +134,7 @@ export function stretches(points: [number, number, number][], every = 100): Stre
   return out;
 }
 
-export type RideSetup = { watts: number; kg: number; cda: number; crr: number };
+type RideSetup = { watts: number; kg: number; cda: number; crr: number };
 
 /**
  * Steady-power physics: P·η = ½ρ·CdA·v³ + m·g·(Crr·cosθ + sinθ)·v, solved per stretch.

@@ -1,5 +1,3 @@
-import { after } from "next/server";
-import { syncCoros } from "@/lib/coros/sync";
 import { MIN_NIGHTS, midpointSpreadMin, WORD } from "@/lib/readiness";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
@@ -9,16 +7,8 @@ import { FormTile, HrvList, PlanStrip, RhrTile, SleepTile, StressTile, Workout }
 import { hm } from "./ui";
 import { Volume } from "./Volume";
 
-/** Opening the app before the 09:00 UTC cron pulls last night, at most every 20 minutes. */
-const PULL_AFTER_MS = 20 * 60 * 1000;
-
-export const maxDuration = 60;
-
 export default async function TodayPage() {
   const t = await loadToday();
-  if (!t.lastNight?.hrv && (!t.lastSync || Date.now() - t.lastSync.at.getTime() > PULL_AFTER_MS)) {
-    after(() => syncCoros().catch(() => {})); // failures are logged and shown on the COROS card
-  }
   const { ready } = t;
   const word = WORD[ready.state];
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;

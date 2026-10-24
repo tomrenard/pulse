@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   mergeNights,
+  parseDailyHealth,
   parseRestingHr,
   parseSleepHrv,
   parseSleepOverview,
@@ -103,12 +104,31 @@ test("sleep overview", () => {
   ]);
 });
 
-test("stress and resting HR, merged per day", () => {
+test("stress and COROS resting HR, merged per day", () => {
   const merged = mergeNights(parseStress(STRESS), parseRestingHr(RHR));
   expect(merged).toEqual([
-    { date: "2026-10-01", stress: 22, rhr: 53 },
-    { date: "2026-10-02", stress: 31, rhr: 51 },
+    { date: "2026-10-01", stress: 22, corosRhr: 53 },
+    { date: "2026-10-02", stress: 31, corosRhr: 51 },
   ]);
+});
+
+test("resting HR = lowest sleeping HR from the daily summary", () => {
+  const text = `Daily Health Data — Last 2 days | Resting HR: 45 bpm | HRV Baseline: 42 ms
+Note: sleep entries are dated by their wake-up day.
+
+--- 20261001 ---
+Steps: 3,408 | Calories: 757 kcal | Exercise: 31 min
+Stress: Avg 28
+
+--- 20261002 ---
+Steps: 4,243 | Calories: 697 kcal | Exercise: 4 min
+Sleep Summary:
+  Total: 8h 34min | Deep: 1h 29min | Light: 4h 39min | REM: 2h 15min | Awake: 11 min
+  Sleep HR: Avg 57 bpm | Min 44 bpm | Max 90 bpm`;
+  expect(parseDailyHealth(text)).toEqual([{ date: "2026-10-02", sleepHrAvg: 57, rhr: 44 }]);
+  expect(() => parseDailyHealth("--- 20261002 ---\nSleep heart rate 57/44")).toThrow(
+    /format changed/,
+  );
 });
 
 test("no data is fine, a changed format throws", () => {

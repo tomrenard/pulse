@@ -1,4 +1,4 @@
-import { addDays, weekday } from "@/lib/date";
+import { addDays, daysBetween, weekday } from "@/lib/date";
 import { clampCtl, formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
 import { Forecast } from "../charts";
@@ -6,8 +6,6 @@ import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
 import { WhatIf } from "./WhatIf";
-
-const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 
 function RaceDayForm({
   form,

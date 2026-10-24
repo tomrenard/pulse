@@ -1,4 +1,5 @@
 import type { Badge } from "@/lib/badges";
+import { daysBetween } from "@/lib/date";
 import { clock as time } from "@/lib/format";
 import { criticalSpeed, predictTime, swimCss } from "@/lib/races";
 import { loadRaceExtras } from "@/lib/races-load";
@@ -186,7 +187,7 @@ export default async function RacesPage() {
             <ul className="plain">
               {x.races.map((race) => (
                 <li key={race.id}>
-                  <b className="num">{daysTo(x.date, race.start_date_local.slice(0, 10))} d</b>{" "}
+                  <b className="num">{daysBetween(x.date, race.start_date_local.slice(0, 10))} d</b>{" "}
                   {race.name ?? "Race"}{" "}
                   <span className="dim">· {race.category.replace("RACE_", "")} race</span>
                 </li>
@@ -225,7 +226,7 @@ export default async function RacesPage() {
             </tbody>
           </table>
           <p className="say dim">
-            ml/kg/min. Running: Daniels VDOT from your best effort (1.5 km to half). Riding: Hawley
+            ml/kg/min. Running: Daniels VDOT from your best effort (5 km to half). Riding: Hawley
             &amp; Noakes from best 5-min power at that day's weight. Both are estimates from
             training bests, typically within 5–10% of a lab test at best.
           </p>
@@ -236,11 +237,13 @@ export default async function RacesPage() {
         <div className="mod-b">
           {"cs" in cs ? (
             <div className="stats num">
-              {[
-                [5000, "5 km"],
-                [10000, "10 km"],
-              ].map(([d, label]) => {
-                const t = predictTime(cs, d as number);
+              {(
+                [
+                  [5000, "5 km"],
+                  [10000, "10 km"],
+                ] as const
+              ).map(([d, label]) => {
+                const t = predictTime(cs, d);
                 return (
                   <span key={label}>
                     <b>
@@ -258,8 +261,10 @@ export default async function RacesPage() {
           )}
           {x.coros?.k5 && (
             <p className="say">
-              COROS predicts 5 km {time(x.coros.k5)}, 10 km {time(x.coros.k10)}, half{" "}
-              {time(x.coros.half)}, marathon {time(x.coros.marathon)}.
+              COROS predicts (
+              {x.corosAt?.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}) 5 km{" "}
+              {time(x.coros.k5)}, 10 km {time(x.coros.k10)}, half {time(x.coros.half)}, marathon{" "}
+              {time(x.coros.marathon)}.
             </p>
           )}
           <p className="say dim">
@@ -272,11 +277,9 @@ export default async function RacesPage() {
       <Module title="Swim · critical speed">
         <div className="mod-b">
           <p className="say" style={{ marginTop: 0 }}>
-            {!css
-              ? "Needs a best 200 m and 400 m swim."
-              : "problem" in css
-                ? css.problem
-                : `CSS ${time(css.per100)} /100 m, from your best 200 m (${time(x.swim200)}) and 400 m (${time(x.swim400)}).`}
+            {"problem" in css
+              ? css.problem
+              : `CSS ${time(css.per100)} /100 m, from your best 200 m (${time(x.swim200)}) and 400 m (${time(x.swim400)}).`}
           </p>
         </div>
       </Module>

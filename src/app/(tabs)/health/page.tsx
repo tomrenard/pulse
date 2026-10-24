@@ -120,7 +120,7 @@ export default async function HealthPage() {
         </div>
       </Module>
 
-      <Module title="Resting HR · 60 nights">
+      <Module title="Resting HR · lowest asleep · 60 nights">
         <div className="mod-b">
           <Line
             points={series(60, "rhr")}

@@ -323,7 +323,7 @@ export function RhrTile({ nights, last, date }: { nights: Night[]; last?: Night;
         ) : null}
         <div className="say">
           {normal
-            ? `Your normal: ${normal.low}–${normal.high} bpm.`
+            ? `Lowest while asleep. Your normal: ${normal.low}–${normal.high} bpm.`
             : `Normal range after ${MIN_NIGHTS} nights.`}
         </div>
       </div>

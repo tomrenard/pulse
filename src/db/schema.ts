@@ -51,7 +51,11 @@ export const night = pgTable("night", {
   awakeMin: integer("awake_min"),
   sleepStart: text("sleep_start"),
   sleepEnd: text("sleep_end"),
+  /** Resting HR as pulse defines it: the lowest heart rate of the night's sleep. */
   rhr: integer("rhr"),
+  /** COROS's own daily resting HR, kept for comparison. */
+  corosRhr: integer("coros_rhr"),
+  sleepHrAvg: integer("sleep_hr_avg"),
   stress: integer("stress"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

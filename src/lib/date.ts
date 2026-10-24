@@ -6,3 +6,6 @@ export const addDays = (date: string, n: number) =>
 
 export const weekday = (date: string) =>
   new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+
+export const daysBetween = (a: string, b: string) =>
+  Math.round((Date.parse(b) - Date.parse(a)) / 864e5);

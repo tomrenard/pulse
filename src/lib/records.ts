@@ -34,14 +34,14 @@ type PowerCurve = {
   watts_per_kg?: number[];
   powerModels?: { ftp?: number }[];
 };
-type PaceCurve = { id: string; distance?: number[]; values?: number[] };
+export type PaceCurve = { id: string; distance?: number[]; values?: number[] };
 type Athlete = { icu_weight?: number; sportSettings?: { types?: string[]; ftp?: number }[] };
 
-const HOUR = { next: { revalidate: 3600 } };
+export const HOUR = { next: { revalidate: 3600 } };
 const curves = WINDOWS.map(([id]) => id).join(",");
 
 /** Best value at `x` in a curve: exact point, or undefined if the curve doesn't reach it. */
-const at = (xs: number[] = [], ys: number[] = [], x: number) => {
+export const at = (xs: number[] = [], ys: number[] = [], x: number) => {
   const i = xs.findIndex((v) => Math.abs(v - x) < 1);
   return i >= 0 ? ys[i] : undefined;
 };
@@ -107,8 +107,8 @@ export async function loadRecords() {
     power,
     vo2,
     ftpSet: athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp,
-    /** intervals.icu's power-model FTP from the last 6 weeks of riding. */
     weight: athlete.icu_weight,
+    /** intervals.icu's power-model FTP from the last 6 weeks of riding. */
     ftpModel: Math.round(powerAt("42d")?.powerModels?.[0]?.ftp ?? 0) || undefined,
     pb: level(0),
     now: level(3),

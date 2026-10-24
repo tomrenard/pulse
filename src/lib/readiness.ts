@@ -31,6 +31,15 @@ const RECENT_NIGHTS = 4;
 export const SLEEP_NEED_SECS = 8.5 * 3600;
 
 export const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+/** Least-squares line y = a + b·x. */
+export function linearFit(xs: number[], ys: number[]) {
+  const mx = mean(xs);
+  const my = mean(ys);
+  const sxx = xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+  const b = sxx ? xs.reduce((s, x, i) => s + (x - mx) * ((ys[i] as number) - my), 0) / sxx : 0;
+  return { a: my - b * mx, b };
+}
+
 export const sd = (xs: number[]) => {
   const m = mean(xs);
   return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, xs.length - 1));

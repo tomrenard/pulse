@@ -109,9 +109,9 @@ export function LongRide({ ftp, kg }: { ftp?: number; kg?: number }) {
       )}
       <p className="say dim">
         Steady power, physics only:{" "}
-        {gravel ? "gravel (rolling resistance 0.008, CdA 0.34)" : "road (0.004, CdA 0.30)"}, your
-        weight + bike and bags, descents capped at 55 km/h. No wind, no fatigue: over many hours
-        you'll likely hold less power than you plan.
+        {gravel ? "gravel (rolling resistance 0.008, CdA 0.34)" : "road (0.004, CdA 0.30)"},{" "}
+        {kg ? "your weight" : "an assumed 68 kg"} + bike and bags, descents capped at 55 km/h. No
+        wind, no fatigue: over many hours you'll likely hold less power than you plan.
       </p>
     </>
   );

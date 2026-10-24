@@ -92,12 +92,39 @@ export function parseStress(text: string): Night[] {
   return nights;
 }
 
+/** COROS's daily resting HR: stored as corosRhr, for comparison only. */
 export function parseRestingHr(text: string): Night[] {
   const nights = [...text.matchAll(/^(\d{4}-\d{2}-\d{2}): (\d+) bpm/gm)].map((m) => ({
     date: m[1] as string,
-    rhr: Number(m[2]),
+    corosRhr: Number(m[2]),
   }));
   ensureParsed("queryRestingHeartRate", text, nights.length);
+  return nights;
+}
+
+/**
+ * Sleep heart rate per night from the daily health summary. Resting HR = the night's lowest
+ * sleeping HR: COROS's official data has no minute series, so a lowest-30-minute average (the
+ * Garmin definition) can't be computed; the minimum is the closest consistent measure.
+ */
+export function parseDailyHealth(text: string): Night[] {
+  const nights: Night[] = [];
+  for (const block of text.split(/\n(?=--- \d{8} ---)/)) {
+    const day = block.match(/^--- (\d{4})(\d{2})(\d{2}) ---/);
+    const hr = block.match(/Sleep HR: Avg (\d+) bpm \| Min (\d+) bpm/);
+    if (day && hr) {
+      nights.push({
+        date: `${day[1]}-${day[2]}-${day[3]}`,
+        sleepHrAvg: Number(hr[1]),
+        rhr: Number(hr[2]),
+      });
+    }
+  }
+  ensureParsed(
+    "queryDailyHealthData",
+    text.replace(/(\d{4})(\d{2})(\d{2})/g, "$1-$2-$3"),
+    nights.length,
+  );
   return nights;
 }
 

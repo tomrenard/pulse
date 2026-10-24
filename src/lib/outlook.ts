@@ -4,7 +4,7 @@
  * ranges are the 80th percentile of past errors, not the average.
  */
 import { addDays } from "./date.ts";
-import { mean } from "./readiness.ts";
+import { linearFit } from "./readiness.ts";
 
 const K_CTL = 1 - Math.exp(-1 / 42);
 const K_ATL = 1 - Math.exp(-1 / 7);
@@ -120,12 +120,11 @@ export function powerVsFitness(
     points.push({ ctl, power: Math.max(...window.map((x) => x.best20 as number)) });
   });
   if (points.length < 8) return undefined;
-  const mx = mean(points.map((p) => p.ctl));
-  const my = mean(points.map((p) => p.power));
-  const sxx = points.reduce((s, p) => s + (p.ctl - mx) ** 2, 0);
-  const b = sxx ? points.reduce((s, p) => s + (p.ctl - mx) * (p.power - my), 0) / sxx : 0;
+  const { a, b } = linearFit(
+    points.map((p) => p.ctl),
+    points.map((p) => p.power),
+  );
   if (b <= 0) return undefined;
-  const a = my - b * mx;
   const errors = points
     .map((p) => Math.abs(a + b * p.ctl - p.power) / p.power)
     .sort((x, y) => x - y);

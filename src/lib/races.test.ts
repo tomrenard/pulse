@@ -31,7 +31,8 @@ test("cycling VO2max, Hawley & Noakes", () => {
 test("swim CSS refuses impossible times", () => {
   expect(swimCss(3, 15)).toHaveProperty("problem");
   expect(swimCss(200, 420)).toEqual({ per100: 110 });
-  expect(swimCss(undefined, 420)).toBeUndefined();
+  expect(swimCss(150, 290)).toHaveProperty("problem"); // CSS faster than the 200 m pace
+  expect(swimCss(undefined, 420)).toHaveProperty("problem");
 });
 
 test("critical speed needs real hard efforts from 2 runs", () => {
@@ -76,8 +77,6 @@ Half Marathon Prediction: 1:36:00
 Marathon Prediction: 3:20:00`;
   expect(parseCorosFitness(text)).toEqual({
     vo2max: 50,
-    runningLevel: 80,
-    thresholdPerKm: 270,
     k5: 1260,
     k10: 2610,
     half: 5760,
