@@ -2,7 +2,9 @@ import { addDays, daysBetween, shortDate } from "@/lib/date";
 import { hmm } from "@/lib/format";
 import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
-import { loadCoros } from "@/lib/races-load";
+import { raceDayVdot, timeAt } from "@/lib/potential";
+import { swimCss, triLegs, triSplit } from "@/lib/races";
+import { loadCoros, loadSwim } from "@/lib/races-load";
 import { MIN_EVENTS, type recoveryResponse, SOLID_NIGHTS } from "@/lib/recovery";
 import { SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Scatter } from "../charts";
@@ -10,6 +12,7 @@ import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
 import { Potential } from "./Potential";
+import { Tri } from "./Tri";
 import { WhatIf } from "./WhatIf";
 
 const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
@@ -64,7 +67,7 @@ function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
 }
 
 export default async function OutlookPage() {
-  const [o, coros] = await Promise.all([loadOutlook(), loadCoros()]);
+  const [o, coros, pool] = await Promise.all([loadOutlook(), loadCoros(), loadSwim()]);
   const next = o.races[0];
   const runRace = o.races.find((r) => r.info.sport === "run" && r.info.metres);
   const known = o.ctl !== undefined && o.atl !== undefined;
@@ -99,6 +102,23 @@ export default async function OutlookPage() {
       : [];
   const raceDay = plan.find((d) => d.date === raceDate);
   const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
+  // Next triathlon: legs from swim CSS, eFTP and race-day running potential at today's volume.
+  const tri = o.races.find((r) => r.info.sport === "tri");
+  const css = swimCss(pool.swim200, pool.swim400);
+  const triSplitNow =
+    tri &&
+    (() => {
+      const weeks = daysBetween(o.date, tri.start_date_local.slice(0, 10)) / 7;
+      const { now, anchor, weeklyKm } = o.potential;
+      const v = now && anchor ? raceDayVdot(now, weeklyKm, anchor, weeks) : now;
+      const runM = triLegs(tri.info.label)[2];
+      return triSplit(tri.info.label, {
+        swimPer100: "per100" in css ? css.per100 : undefined,
+        ftp: o.ftp,
+        kg: o.kg,
+        runSecs: v ? timeAt(v, runM) : undefined,
+      });
+    })();
   const corosTimes = coros ? [coros.k5, coros.k10, coros.half, coros.marathon] : undefined;
 
   return (
@@ -175,6 +195,15 @@ export default async function OutlookPage() {
           />
         </div>
       </Module>
+
+      {tri && triSplitNow && (
+        <Tri
+          name={tri.name ?? ""}
+          label={tri.info.label}
+          split={triSplitNow}
+          swimNote={"problem" in css ? css.problem : undefined}
+        />
+      )}
 
       <Module title="Next 8 weeks" value={planned ? undefined : "nothing planned"}>
         {planned ? (

@@ -7,6 +7,7 @@ import {
   rideTime,
   stretches,
   swimCss,
+  triSplit,
   vdot,
 } from "./races.ts";
 
@@ -117,4 +118,19 @@ test("race info from names when intervals.icu has no distance", () => {
     sport: "run",
     metres: undefined,
   });
+});
+
+test("Olympic tri split: legs in sane ranges, swim says what's missing", () => {
+  const t = triSplit("Olympic triathlon", { swimPer100: 100, ftp: 250, kg: 70, runSecs: 2400 });
+  expect(t.distances).toEqual([1500, 40000, 10000]);
+  const leg = (l: typeof t.swim) => ("low" in l ? l : { low: 0, high: 0 });
+  expect(leg(t.swim).low).toBeCloseTo(1560 * 0.92);
+  // ~210 W on the flat in race kit: 37–40 km/h.
+  expect(40000 / leg(t.bike).low).toBeGreaterThan(10);
+  expect(40000 / leg(t.bike).high).toBeGreaterThan(9.5);
+  expect(leg(t.run).low).toBeCloseTo(2472);
+  expect(t.total?.low).toBeLessThan(t.total?.high ?? 0);
+  const noPool = triSplit("Olympic triathlon", { ftp: 250 });
+  expect(noPool.swim).toEqual({ problem: "Needs pool data" });
+  expect(noPool.total).toBeUndefined();
 });

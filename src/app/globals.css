@@ -1366,3 +1366,30 @@ ul.ladder {
     transition: none !important;
   }
 }
+ul.tri {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tri li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.tri li + li {
+  border-top: 1px solid var(--hair);
+}
+.tri .what {
+  display: grid;
+}
+.tri .what small {
+  font-size: 11px;
+  color: var(--fg-3);
+}
+.tri .missing {
+  font-size: 13px;
+  color: var(--fg-2);
+  text-align: right;
+}

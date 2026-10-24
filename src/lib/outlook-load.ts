@@ -8,7 +8,12 @@ import { at, HOUR, type PaceCurve, RUN_DISTANCES } from "@/lib/records";
 import { recoveryResponse } from "@/lib/recovery";
 import type { PlanEvent } from "@/lib/today";
 
-type Wellness = { id: string; ctl?: number; atl?: number };
+type Wellness = {
+  id: string;
+  ctl?: number;
+  atl?: number;
+  sportInfo?: { type: string; eftp?: number }[];
+};
 type Curve = { start_date_local: string; secs?: number[]; watts?: number[] };
 
 const DAY = 24 * 3600;
@@ -59,7 +64,7 @@ function dailyLoads(activities: Activity[], from: string, to: string) {
 export async function loadOutlook() {
   const date = today();
   const [wellness, events, activities, weeks, athlete, pace, { nights }] = await Promise.all([
-    orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
+    orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -7)}&newest=${date}`), []),
     orNothing(
       intervals<PlanEvent[]>(
         `/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 365)}`,
@@ -76,7 +81,13 @@ export async function loadOutlook() {
     ),
     // Weeks are Mondays from POWER_FROM: up to a week ago means only finished weeks.
     weeklyBest20(addDays(date, -7)),
-    orNothing(intervals<{ sportSettings?: { types?: string[]; max_hr?: number }[] }>(""), {}),
+    orNothing(
+      intervals<{
+        icu_weight?: number;
+        sportSettings?: { types?: string[]; max_hr?: number; ftp?: number }[];
+      }>(""),
+      {},
+    ),
     // Bests from the same years as the heart-rate data: an older PB would inflate "now".
     orNothing(
       intervals<{ list: PaceCurve[] }>(
@@ -87,7 +98,13 @@ export async function loadOutlook() {
     ),
     loadNights(date, 400),
   ]);
-  const w = wellness[0];
+  const w = wellness.find((x) => x.id === date);
+  // intervals.icu's eFTP from the newest day that has one, else the FTP you set.
+  const eftp = [...wellness]
+    .reverse()
+    .flatMap((x) => x.sportInfo ?? [])
+    .find((x) => x.type === "Ride" && x.eftp)?.eftp;
+  const ftp = eftp ?? athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp;
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -84));
   const rideCtl = rideCtlByDay(activities, date);
   const races = events
@@ -122,6 +139,8 @@ export async function loadOutlook() {
     runRate: loadPerHour(recent, "run", 60),
     workouts: events.filter((e) => e.category === "WORKOUT"),
     races,
+    ftp,
+    kg: athlete.icu_weight,
     recovery: recoveryResponse(dailyLoads(activities, addDays(date, -400), date), nights),
     potential: {
       // Stale after 30 days without a qualifying run: then there's no "now".

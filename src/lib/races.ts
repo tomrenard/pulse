@@ -184,3 +184,57 @@ export function raceInfo(e: {
   }
   return { sport: "other" as const, metres, label: e.type ?? "Race" };
 }
+
+/** Swim, bike and run distances (m) by triathlon label. */
+const OLYMPIC: [number, number, number] = [1500, 40000, 10000];
+const TRI_LEGS: Record<string, [number, number, number]> = {
+  "Sprint triathlon": [750, 20000, 5000],
+  "Olympic triathlon": OLYMPIC,
+  "Half distance": [1900, 90000, 21097.5],
+  "Full distance": [3800, 180000, 42195],
+};
+export const triLegs = (label: string) => TRI_LEGS[label] ?? OLYMPIC;
+
+type Leg = { low: number; high: number } | { problem: string };
+
+/**
+ * A flat-course triathlon split, each leg as a range (s).
+ *   Swim: CSS + 4 s/100 m (open water: wetsuit gains roughly offset sighting and the start),
+ *         ±8 %. Without a usable CSS: "Needs pool data".
+ *   Bike: steady-power physics on the flat at 80–88 % of FTP (Olympic) or 70–78 % (longer),
+ *         race kit (CdA 0.28, Crr 0.004), weight + 9 kg.
+ *   Run:  your race-day open time for the run distance (runSecs), 3–8 % slower off the bike (Bonacci 2011; Hausswirth 1997).
+ *   T1 + T2: 3–6 min.
+ * ponytail: flat course and no drafting; a GPX of the bike course would sharpen the bike leg.
+ */
+export function triSplit(
+  label: string,
+  x: { swimPer100?: number; ftp?: number; kg?: number; runSecs?: number },
+) {
+  const distances = triLegs(label);
+  const [swimM, bikeM, runM] = distances;
+  const swim: Leg = x.swimPer100
+    ? ((s) => ({ low: s * 0.92, high: s * 1.08 }))(((x.swimPer100 + 4) * swimM) / 100)
+    : { problem: "Needs pool data" };
+  const [lo, hi] = bikeM > 40000 ? [0.7, 0.78] : [0.8, 0.88];
+  const ride = (frac: number) =>
+    rideTime([{ metres: bikeM, grade: 0 }], {
+      watts: (x.ftp as number) * frac,
+      kg: (x.kg ?? 70) + 9,
+      cda: 0.28,
+      crr: 0.004,
+    }).secs;
+  const bike: Leg = x.ftp ? { low: ride(hi), high: ride(lo) } : { problem: "Needs an FTP" };
+  const run: Leg = x.runSecs
+    ? { low: x.runSecs * 1.03, high: x.runSecs * 1.08 }
+    : { problem: "Needs recent runs with heart rate" };
+  const transitions = { low: 180, high: 360 };
+  const legs = [swim, bike, run, transitions];
+  const total = legs.every((l) => "low" in l)
+    ? {
+        low: legs.reduce((s, l) => s + (l as { low: number }).low, 0),
+        high: legs.reduce((s, l) => s + (l as { high: number }).high, 0),
+      }
+    : undefined;
+  return { distances, swim, bike, run, transitions, total };
+}
