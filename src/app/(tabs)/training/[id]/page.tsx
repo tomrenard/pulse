@@ -3,8 +3,9 @@ import { shortDate } from "@/lib/date";
 import { clock, hm } from "@/lib/format";
 import { activity as icuActivity } from "@/lib/intervals";
 import { orNothing } from "@/lib/nights";
+import { smooth, thin, zoneOf, zoneSegments } from "@/lib/streams";
 import { type Activity, zoneTotals } from "@/lib/training";
-import { Zones } from "../../charts";
+import { StreamChart, Zones } from "../../charts";
 import { Hero } from "../../Hero";
 import { Sky } from "../../Sky";
 import { Module } from "../../ui";
@@ -28,18 +29,39 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
     icuActivity<Activity>(id).catch((e: Error) =>
       e.message.includes(" 404") ? undefined : Promise.reject(e),
     ),
-    orNothing(icuActivity<Stream[]>(id, "/streams.json?types=latlng"), []),
+    orNothing(icuActivity<Stream[]>(id, "/streams.json?types=latlng,watts,heartrate,time"), []),
     orNothing(icuActivity<{ icu_intervals?: Lap[] }>(id, "/intervals"), {}),
   ]);
   if (!activity) notFound();
-  const ll = streams.find((s) => s.type === "latlng");
+  const stream = (type: string) => streams.find((s) => s.type === type);
+  const ll = stream("latlng");
+  const watts = stream("watts")?.data;
+  const time = stream("time")?.data ?? [];
+  // Power zones along the route from 30-second power, at the activity's own FTP and zone tops.
+  const ftp = activity.icu_ftp;
+  const zonesAlong =
+    watts && ftp
+      ? smooth(watts, 30).map((w) =>
+          zoneOf(w, ftp, activity.icu_power_zones ?? [55, 75, 90, 105, 120, 150, 999]),
+        )
+      : undefined;
+  const points = (ll?.data ?? []).map((lat, i) => ({
+    p: [ll?.data2?.[i] as number, lat] as [number, number],
+    z: zonesAlong?.[i] ?? 0,
+  }));
   // Every 10th point is plenty for a phone-sized map.
-  const line = (ll?.data ?? [])
-    .map((lat, i) => [ll?.data2?.[i] as number, lat] as [number, number])
-    .filter(
-      (p, i, all) =>
-        (i % 10 === 0 || i === all.length - 1) && Number.isFinite(p[0]) && Number.isFinite(p[1]),
-    );
+  const route = thin(points, 10).filter(({ p }) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+  const line = route.map((r) => r.p);
+  const segments = zonesAlong
+    ? zoneSegments(
+        line,
+        route.map((r) => r.z),
+      )
+    : undefined;
+  // About 300 points for the chart.
+  const step = Math.max(1, Math.ceil(time.length / 300));
+  const chartPower = watts ? thin(smooth(watts, 30), step) : undefined;
+  const hr = stream("heartrate")?.data;
   const zones = zoneTotals([activity]);
   const lapsList = (laps.icu_intervals ?? []).filter((l) => l.moving_time);
   const date = shortDate(activity.start_date_local, true);
@@ -50,7 +72,6 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
         word={hm(activity.moving_time).replace(" ", "")}
         sub={activity.name ?? activity.type ?? ""}
       >
-        <div className="cond">{activity.name ?? activity.type}</div>
         <div className="hl num">
           {activity.distance ? `${(activity.distance / 1000).toFixed(1)} km` : ""}
           {activity.total_elevation_gain ? (
@@ -62,8 +83,20 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
 
       {line.length > 1 && (
         <section className="mod map-mod" aria-label="Route">
-          <RouteMap line={line} />
+          <RouteMap line={line} segments={segments} />
         </section>
+      )}
+
+      {time.length > 1 && (
+        <Module title="Power & heart rate">
+          <div className="mod-b">
+            <StreamChart
+              secs={thin(time, step)}
+              power={chartPower}
+              hr={hr ? thin(hr, step) : undefined}
+            />
+          </div>
+        </Module>
       )}
 
       <Module title="Effort">

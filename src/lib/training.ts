@@ -12,6 +12,9 @@ export type Activity = VolumeActivity & {
   total_elevation_gain?: number;
   icu_zone_times?: { id: string; secs: number }[];
   icu_hr_zone_times?: number[];
+  icu_ftp?: number;
+  /** Zone tops in % of FTP. */
+  icu_power_zones?: number[];
 };
 type Wellness = { id: string; ctl?: number; atl?: number; rampRate?: number };
 

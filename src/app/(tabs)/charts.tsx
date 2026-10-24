@@ -200,7 +200,15 @@ export function Forecast({
   );
 }
 
-const ZONE_COLORS = ["#7f8c9a", "#5be3a0", "#c8e35b", "#f7c55a", "#ff9a5a", "#ff6a6a", "#c06aff"];
+export const ZONE_COLORS = [
+  "#7f8c9a",
+  "#5be3a0",
+  "#c8e35b",
+  "#f7c55a",
+  "#ff9a5a",
+  "#ff6a6a",
+  "#c06aff",
+];
 
 /** Share of time per zone as one stacked bar with a legend. */
 export function Zones({ secs, label }: { secs: number[]; label: string }) {
@@ -280,6 +288,77 @@ export function Scatter({
           {Math.round(y0 + 10)}–{Math.round(y1 - 10)} W
         </span>
         <span>{Math.round(x1 - 2)}</span>
+      </div>
+    </figure>
+  );
+}
+
+/** Power (smoothed) and heart rate over the activity, each on its own scale. */
+export function StreamChart({
+  secs,
+  power,
+  hr,
+}: {
+  secs: number[];
+  power?: number[];
+  hr?: number[];
+}) {
+  const end = secs.at(-1) ?? 0;
+  if (end <= 0 || (!power?.length && !hr?.length)) return null;
+  const x = (t: number) => (t / end) * W;
+  const line = (values: number[], lo: number, hi: number) =>
+    values
+      .map(
+        (v, i) =>
+          `${i ? "L" : "M"}${x(secs[i] ?? 0).toFixed(1)} ${(H - ((v - lo) / (hi - lo || 1)) * (H - 6) - 3).toFixed(1)}`,
+      )
+      .join("");
+  const range = (v: number[]) => [Math.min(...v), Math.max(...v)] as const;
+  const avg = (v: number[]) => Math.round(v.reduce((s, n) => s + n, 0) / v.length);
+  return (
+    <figure className="chart">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Power${power?.length ? ` averaging ${avg(power)} W` : ""} and heart rate${hr?.length ? ` averaging ${avg(hr)} bpm` : ""} over the activity`}
+      >
+        {power?.length ? (
+          <path
+            d={line(power, 0, range(power)[1])}
+            fill="none"
+            stroke="var(--form)"
+            strokeWidth={1.6}
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
+        {hr?.length ? (
+          <path
+            d={line(hr, range(hr)[0] - 5, range(hr)[1] + 5)}
+            fill="none"
+            stroke="var(--rhr)"
+            strokeWidth={1.6}
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
+      </svg>
+      <div className="axis">
+        <span>0</span>
+        <span className="legend-inline">
+          {power?.length ? (
+            <>
+              <i style={{ background: "var(--form)" }} /> power
+            </>
+          ) : null}
+          {hr?.length ? (
+            <>
+              <i style={{ background: "var(--rhr)" }} /> heart rate
+            </>
+          ) : null}
+        </span>
+        <span>
+          {Math.floor(end / 3600)}h{String(Math.round((end % 3600) / 60)).padStart(2, "0")}
+        </span>
       </div>
     </figure>
   );
