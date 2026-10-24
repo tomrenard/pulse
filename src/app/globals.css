@@ -114,7 +114,8 @@ input:focus-visible {
   max-width: 440px;
   margin: 0 auto;
   padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px))
-    calc(96px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    calc(100px + max(12px, env(safe-area-inset-bottom, 0px)))
+    max(16px, env(safe-area-inset-left, 0px));
   display: grid;
   gap: 12px;
 }
@@ -740,6 +741,11 @@ table.records {
   color: var(--fg-3);
 }
 
+.skeleton {
+  height: 160px;
+  opacity: 0.6;
+}
+
 /* login */
 .field {
   width: 100%;
@@ -767,83 +773,94 @@ table.records {
   font-weight: 600;
 }
 
-/* bottom bar */
-.bar {
+/* dock: floating Liquid Glass tab bar + refresh island (iOS 26 pattern) */
+.dock {
   position: fixed;
   z-index: 20;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 10px max(20px, env(safe-area-inset-right, 0px))
-    calc(10px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  gap: 8px;
   align-items: center;
-  background: var(--tint-solid);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.glass {
+  position: relative;
+  border-radius: 999px;
+  background: rgba(16, 28, 44, 0.88);
+  border: 0.5px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.35);
 }
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .bar {
-    background: rgba(10, 20, 32, 0.35);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
+  .glass {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+    -webkit-backdrop-filter: blur(22px) saturate(190%);
+    backdrop-filter: blur(22px) saturate(190%);
   }
 }
-.ib {
-  width: 44px;
-  height: 44px;
+.tabs {
+  flex: 1;
+  height: 62px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+/* The selected tab's lens: a lighter glass pill that slides between equal columns. */
+.pill {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 10px) / 5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.18);
+  transform: translateX(calc(var(--i) * 100%));
+  transition: transform 0.42s cubic-bezier(0.32, 1.25, 0.5, 1);
+}
+.tab {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  color: var(--fg-2);
+  text-decoration: none;
+  font: 600 10.5px var(--text);
+  letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab svg {
+  width: 23px;
+  height: 23px;
+}
+.tab[aria-current="page"] {
+  color: var(--fg);
+}
+.island {
+  flex: none;
+  width: 62px;
+  height: 62px;
   display: grid;
   place-items: center;
-  border: 0;
-  background: none;
   color: var(--fg);
   cursor: pointer;
-  border-radius: 50%;
   padding: 0;
 }
-.ib svg {
-  width: 22px;
-  height: 22px;
+.island svg {
+  width: 23px;
+  height: 23px;
   transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.ib.spin svg {
+.island.spin svg {
   transform: rotate(360deg);
-}
-.dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-}
-.dots a {
-  height: 22px;
-  min-width: 22px;
-  display: grid;
-  place-items: center;
-  color: var(--fg);
-  font: 600 12px var(--text);
-  text-decoration: none;
-}
-.dots a::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-}
-.dots a[aria-current="page"] {
-  padding: 0 10px;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.18);
-}
-.dots a[aria-current="page"]::before {
-  display: none;
-}
-.dots a span {
-  display: none;
-}
-.dots a[aria-current="page"] span {
-  display: inline;
 }
 
 @media (prefers-reduced-motion: reduce) {
