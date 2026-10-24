@@ -126,3 +126,78 @@ export function Bars({
     </figure>
   );
 }
+
+/** Fitness (top) and form (bottom, around zero) over a projected period; optional race marker. */
+export function Forecast({
+  days,
+  race,
+}: {
+  days: { date: string; ctl: number; tsb: number }[];
+  race?: string;
+}) {
+  if (days.length < 2) return null;
+  const x = (i: number) => (i / (days.length - 1)) * W;
+  const ctlY = scale(
+    days.map((d) => d.ctl),
+    2,
+  );
+  const fitness = (i: number) => (ctlY(days[i]?.ctl ?? 0) / H) * 52;
+  const maxTsb = Math.max(10, ...days.map((d) => Math.abs(d.tsb)));
+  const form = (v: number) => 74 - (v / maxTsb) * 14;
+  const path = (y: (i: number) => number) =>
+    days.map((_, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(i).toFixed(1)}`).join("");
+  const raceAt = race ? days.findIndex((d) => d.date === race) : -1;
+  const last = days.at(-1) as (typeof days)[number];
+  return (
+    <figure className="chart">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Projected fitness ${Math.round(days[0]?.ctl ?? 0)} to ${Math.round(last.ctl)}, form ${Math.round(last.tsb)} at the end`}
+      >
+        <line
+          x1={0}
+          x2={W}
+          y1={74}
+          y2={74}
+          stroke="rgba(255,255,255,.25)"
+          vectorEffect="non-scaling-stroke"
+        />
+        {raceAt >= 0 && (
+          <line
+            x1={x(raceAt)}
+            x2={x(raceAt)}
+            y1={0}
+            y2={H}
+            stroke="var(--mid)"
+            strokeDasharray="3 3"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        <path
+          d={path(fitness)}
+          fill="none"
+          stroke="var(--form)"
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d={path((i) => form(days[i]?.tsb ?? 0))}
+          fill="none"
+          stroke="var(--go)"
+          strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div className="axis">
+        <span>{short(days[0]?.date ?? "")}</span>
+        <span className="legend-inline">
+          <i style={{ background: "var(--form)" }} /> fitness{" "}
+          <i style={{ background: "var(--go)" }} /> form
+        </span>
+        <span>{short(last.date)}</span>
+      </div>
+    </figure>
+  );
+}

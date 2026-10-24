@@ -552,6 +552,33 @@ button.chip {
   padding: 13px 20px;
 }
 
+.slider {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--fg-2);
+}
+.slider b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.slider input {
+  width: 100%;
+  accent-color: var(--form);
+}
+.legend-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend-inline i {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  margin-left: 6px;
+}
+
 /* login */
 .field {
   width: 100%;

@@ -9,6 +9,7 @@ const TABS = [
   ["/training", "Training"],
   ["/health", "Health"],
   ["/races", "Races"],
+  ["/outlook", "Outlook"],
 ] as const;
 
 /** Weather-style bottom bar: refresh, page dots, next tab. Coming back to the app refreshes too. */

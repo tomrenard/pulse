@@ -1,0 +1,123 @@
+/**
+ * Outlook models. Each one was back-tested on the athlete's own 2023–2026 data
+ * (rolling weekly origins, compared with "no change"); only what holds up is shown, and
+ * ranges are the 80th percentile of past errors, not the average.
+ */
+import { addDays } from "./date.ts";
+
+const K_CTL = 1 - Math.exp(-1 / 42);
+const K_ATL = 1 - Math.exp(-1 / 7);
+
+export type Day = { date: string; ctl: number; atl: number; tsb: number };
+
+/**
+ * Banister fitness/fatigue, the same constants as intervals.icu (back-test parity: 0.00).
+ * Form on a day is yesterday's fitness minus yesterday's fatigue, as intervals.icu shows it.
+ */
+export function projectFitness(start: string, ctl0: number, atl0: number, loads: number[]): Day[] {
+  let ctl = ctl0;
+  let atl = atl0;
+  return loads.map((load, i) => {
+    const tsb = ctl - atl;
+    ctl += (load - ctl) * K_CTL;
+    atl += (load - atl) * K_ATL;
+    return { date: addDays(start, i + 1), ctl, atl, tsb };
+  });
+}
+
+/** Form as % of fitness, intervals.icu's zones (fresh +5…+20 %, optimal −10…−30 %). */
+export const formPct = (d: { ctl: number; tsb: number }) => (d.ctl > 0 ? (d.tsb / d.ctl) * 100 : 0);
+
+/**
+ * Race-day form target: long events (≥ 4 h) want about neutral to slightly fresh, so fitness
+ * isn't lost; short ones tolerate a sharper taper.
+ */
+export function formTarget(durationSecs?: number) {
+  return durationSecs && durationSecs >= 4 * 3600
+    ? { low: 0, high: 10, why: "long event: arrive neutral to slightly fresh" }
+    : { low: 5, high: 20, why: "arrive fresh" };
+}
+
+export type Activity = {
+  start_date_local: string;
+  type?: string;
+  icu_training_load?: number;
+  moving_time?: number;
+};
+
+const isRide = (type = "") => /ride/i.test(type);
+const isRun = (type = "") => /run/i.test(type);
+
+/** Load per hour by sport: total load ÷ total hours over the window (not a per-session median). */
+export function loadPerHour(activities: Activity[], sport: "ride" | "run", fallback: number) {
+  const pick = sport === "ride" ? isRide : isRun;
+  let load = 0;
+  let secs = 0;
+  for (const a of activities) {
+    if (!pick(a.type) || !a.icu_training_load || !a.moving_time) continue;
+    load += a.icu_training_load;
+    secs += a.moving_time;
+  }
+  return secs >= 5 * 3600 ? load / (secs / 3600) : fallback;
+}
+
+/** Ride-only fitness per day from ride loads, built from the first activity. */
+export function rideCtlByDay(activities: Activity[], until: string) {
+  const loads = new Map<string, number>();
+  for (const a of activities) {
+    if (!isRide(a.type) || !a.icu_training_load) continue;
+    const day = a.start_date_local.slice(0, 10);
+    loads.set(day, (loads.get(day) ?? 0) + a.icu_training_load);
+  }
+  const first = [...loads.keys()].sort()[0];
+  const out = new Map<string, number>();
+  if (!first) return out;
+  let ctl = 0;
+  for (let d = first; d <= until; d = addDays(d, 1)) {
+    ctl += ((loads.get(d) ?? 0) - ctl) * K_CTL;
+    out.set(d, ctl);
+  }
+  return out;
+}
+
+/**
+ * Your 20-min power against ride fitness, from your own history: best 20 min in the 6 weeks
+ * before each Monday (window counted when ≥ 2 of those weeks have rides) vs ride CTL that day.
+ * Descriptive, not a forecast: fed with a projected CTL it did not beat "no change".
+ */
+export function powerVsFitness(
+  weeks: { monday: string; best20?: number }[],
+  rideCtl: Map<string, number>,
+) {
+  const points: { ctl: number; power: number }[] = [];
+  weeks.forEach((w, i) => {
+    if (i < 6) return;
+    const window = weeks.slice(i - 6, i).filter((x) => x.best20);
+    if (window.length < 2) return;
+    const ctl = rideCtl.get(addDays(w.monday, -1));
+    if (ctl === undefined) return;
+    points.push({ ctl, power: Math.max(...window.map((x) => x.best20 as number)) });
+  });
+  if (points.length < 8) return undefined;
+  const mx = points.reduce((s, p) => s + p.ctl, 0) / points.length;
+  const my = points.reduce((s, p) => s + p.power, 0) / points.length;
+  const sxx = points.reduce((s, p) => s + (p.ctl - mx) ** 2, 0);
+  const b = sxx ? points.reduce((s, p) => s + (p.ctl - mx) * (p.power - my), 0) / sxx : 0;
+  if (b <= 0) return undefined;
+  const a = my - b * mx;
+  const errors = points
+    .map((p) => Math.abs(a + b * p.ctl - p.power) / p.power)
+    .sort((x, y) => x - y);
+  return {
+    a,
+    b,
+    n: points.length,
+    p80: errors[Math.floor(errors.length * 0.8)] ?? 0,
+    minCtl: Math.min(...points.map((p) => p.ctl)),
+    maxCtl: Math.max(...points.map((p) => p.ctl)),
+    /** Typical 20-min best at a ride CTL, clamped to the range you have actually been in. */
+    at(ctl: number) {
+      return a + b * Math.min(this.maxCtl, Math.max(this.minCtl, ctl));
+    },
+  };
+}
