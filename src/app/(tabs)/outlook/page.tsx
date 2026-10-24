@@ -96,8 +96,17 @@ export default async function OutlookPage() {
       .filter((w) => w.start_date_local.startsWith(addDays(o.date, i + 1)))
       .reduce((s, w) => s + (w.icu_training_load ?? 0), 0),
   );
+  // Only when the plan runs into race week and every session has a load: otherwise the
+  // projection reads missing days as rest and race-day form comes out absurdly fresh.
+  const upToRace = raceDate
+    ? o.workouts.filter((w) => w.start_date_local.slice(0, 10) <= raceDate)
+    : [];
+  const covered =
+    raceDate !== undefined &&
+    upToRace.some((w) => w.start_date_local.slice(0, 10) >= addDays(raceDate, -7)) &&
+    upToRace.every((w) => w.icu_training_load);
   const plan =
-    known && planned && raceDate
+    known && covered && raceDate
       ? projectFitness(o.date, o.ctl as number, o.atl as number, loads)
       : [];
   const raceDay = plan.find((d) => d.date === raceDate);

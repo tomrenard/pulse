@@ -66,7 +66,8 @@ export async function loadOutlook() {
     orNothing(
       intervals<PlanEvent[]>(
         `/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 365)}`,
-        HOUR,
+        // Short: Wattson edits the plan, and it should show up within minutes.
+        { next: { revalidate: 300 } },
       ),
       [],
     ),
