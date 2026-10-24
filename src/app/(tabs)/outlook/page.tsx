@@ -3,6 +3,7 @@ import { hmm } from "@/lib/format";
 import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
 import { loadCoros } from "@/lib/races-load";
+import { MIN_EVENTS, type recoveryResponse, SOLID_NIGHTS } from "@/lib/recovery";
 import { SPORT_COLOR, sportOf } from "@/lib/volume";
 import { Scatter } from "../charts";
 import { Hero } from "../Hero";
@@ -13,6 +14,54 @@ import { WhatIf } from "./WhatIf";
 
 const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
 const SPORT_TINT = { ...SPORT_COLOR, tri: SPORT_COLOR.swim };
+
+/** Your HRV after big days: learning ring until 5 big days, then the dip night by night. */
+function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
+  const ready = r.events >= MIN_EVENTS && r.nights !== undefined;
+  const nights = (n: number) => (n > r.profile.length ? `${r.profile.length}+` : String(n));
+  return (
+    <Module
+      title="Recovery response"
+      value={ready ? `≈ ${nights(r.nights as number)} nights` : `${r.events} of ${MIN_EVENTS}`}
+      info={
+        <p>
+          Big days are your top 10 % by training load ({r.bigLoad ? Math.round(r.bigLoad) : "–"}+),
+          with no other big day in the 3 days after. Each night after is compared with your 7-night
+          HRV before; recovered means back within your normal spread. Learnt from {r.events} big
+          days and {r.hrvNights} nights of HRV; an early read until {SOLID_NIGHTS} nights.
+        </p>
+      }
+    >
+      <div className="mod-b">
+        {ready ? (
+          <>
+            <div className="stats num">
+              {r.profile.map((p, k) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
+                <span key={k}>
+                  <b>{p === undefined ? "–" : `${p > 0 ? "+" : ""}${Math.round(p)} %`}</b>
+                  night {k + 1}
+                </span>
+              ))}
+            </div>
+            <div className="caption">
+              HRV after a big day, against the week before
+              {r.hrvNights < SOLID_NIGHTS ? " · early read" : ""}
+            </div>
+          </>
+        ) : (
+          <div className="recovery">
+            <span
+              className="ring"
+              style={{ "--p": Math.min(1, r.events / MIN_EVENTS) } as React.CSSProperties}
+            />
+            <span className="caption">Learning how your HRV reacts to big days</span>
+          </div>
+        )}
+      </div>
+    </Module>
+  );
+}
 
 export default async function OutlookPage() {
   const [o, coros] = await Promise.all([loadOutlook(), loadCoros()]);
@@ -214,15 +263,7 @@ export default async function OutlookPage() {
         </Module>
       )}
 
-      <Module title="Recovery response" value={`${Math.min(o.hrvNights, 56)} of 56 nights`}>
-        <div className="mod-b recovery">
-          <span
-            className="ring"
-            style={{ "--p": Math.min(1, o.hrvNights / 56) } as React.CSSProperties}
-          />
-          <span className="caption">Learning how your HRV reacts to big days</span>
-        </div>
-      </Module>
+      <Recovery r={o.recovery} />
     </Sky>
   );
 }
