@@ -1,44 +1,30 @@
-import { asc, gte } from "drizzle-orm";
-import { db } from "@/db/client";
-import { night, tag } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
+import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness, rhrNormal } from "@/lib/readiness";
 
+/** All four lower overnight HRV for a night or two, so all stay out of the normal. */
 export const TAGS = ["alcohol", "illness", "late meal", "travel"] as const;
 
-type Wellness = { id: string; weight?: number | null };
+type Wellness = { id: string; weight?: number | null; ctl?: number; atl?: number };
 type Athlete = { icu_weight?: number };
 
-/** Everything the Health tab shows: 90 nights, tags, and weight from intervals.icu. */
+/** Everything the Health tab shows: 90 nights, last night's tags, weight and form from intervals.icu. */
 export async function loadHealth() {
   const date = today();
-  const [rows, tags, wellness, athlete] = await Promise.all([
-    db()
-      .select()
-      .from(night)
-      .where(gte(night.date, addDays(date, -90)))
-      .orderBy(asc(night.date)),
-    db()
-      .select()
-      .from(tag)
-      .where(gte(tag.date, addDays(date, -90))),
-    intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -180)}&newest=${date}`).catch(
-      () => [] as Wellness[],
-    ),
-    intervals<Athlete>("").catch(() => ({}) as Athlete),
+  const [{ nights, lastNight, lastTags }, wellness, athlete] = await Promise.all([
+    loadNights(date, 90),
+    orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -180)}&newest=${date}`), []),
+    // Weight set in intervals.icu settings, until weights are logged day by day.
+    orNothing(intervals<Athlete>(""), {}),
   ]);
-  const tagsByDate = new Map<string, string[]>();
-  for (const t of tags) tagsByDate.set(t.date, [...(tagsByDate.get(t.date) ?? []), t.kind]);
-  const nights = rows.map((n) => ({ ...n, tagged: tagsByDate.has(n.date) }));
-  const weights = wellness
-    .filter((w) => w.weight)
-    .map((w) => ({ date: w.id, value: w.weight as number }));
+  const weights = wellness.flatMap((w) => (w.weight ? [{ date: w.id, value: w.weight }] : []));
   return {
     date,
     nights,
-    tagsByDate,
-    ready: readiness(nights, date),
+    lastNight,
+    lastTags,
+    ready: readiness(nights, date, tsbOf(wellness.find((w) => w.id === date))),
     rhr: rhrNormal(nights, date),
     weights,
     weight: weights.at(-1)?.value ?? athlete.icu_weight,

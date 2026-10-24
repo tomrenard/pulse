@@ -21,8 +21,8 @@ function scale(values: number[], pad: number) {
 function Axis({ points }: { points: Point[] }) {
   return (
     <div className="axis">
-      <span>{short(points[0]?.date ?? "")}</span>
-      <span>{short(points.at(-1)?.date ?? "")}</span>
+      <span>{short((points[0] as Point).date)}</span>
+      <span>{short((points.at(-1) as Point).date)}</span>
     </div>
   );
 }
@@ -92,7 +92,7 @@ export function Bars({
   label: string;
 }) {
   if (points.length < 2) return <p className="dim">Not enough nights yet.</p>;
-  const max = Math.max(...points.map((p) => p.value), (target ?? 0) * 1.15);
+  const max = Math.max(...points.map((p) => p.value), (target ?? 0) * 1.15, 1);
   const y = (v: number) => H - (v / max) * H;
   const slot = W / points.length;
   return (

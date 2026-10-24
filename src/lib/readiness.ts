@@ -11,7 +11,7 @@ import { addDays } from "./date.ts";
  *   amber = HRV below normal, or two other flags
  *   green = otherwise
  * Shown from 14 nights of HRV, marked provisional until 30. Needs 4 of the last 7 nights.
- * Nights tagged by hand (alcohol, illness) stay out of the normal, as HRV4Training advises.
+ * Nights tagged by hand (alcohol, illness, late meal, travel) stay out of the normal.
  */
 
 export type NightInput = {

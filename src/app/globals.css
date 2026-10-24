@@ -466,8 +466,6 @@ input:focus-visible {
 }
 .tile .say {
   margin-top: auto;
-  font-size: 13px;
-  line-height: 1.32;
 }
 .gbar {
   position: relative;
@@ -527,6 +525,10 @@ input:focus-visible {
   margin-top: 12px;
   border-radius: 4px;
   overflow: hidden;
+}
+.chips.start {
+  justify-content: flex-start;
+  margin-top: 0;
 }
 .say {
   margin: 8px 0 0;

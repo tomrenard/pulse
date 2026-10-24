@@ -1,12 +1,10 @@
-import { asc, desc, eq, gte } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { log, night, tag } from "@/db/schema";
+import { log } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
+import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
-
-/** intervals.icu being down must not take the page with it: its parts just show "–". */
-const orNothing = <T>(promise: Promise<T>, fallback: T) => promise.catch(() => fallback);
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Step = {
@@ -45,27 +43,16 @@ export function profile(steps: Step[] = [], ftp = 0): [number, number][] {
 /** Everything the Today screen shows, fetched in parallel. */
 export async function loadToday() {
   const date = today();
-  const [rows, tags, wellness, events, athlete, [lastSync]] = await Promise.all([
-    db()
-      .select()
-      .from(night)
-      .where(gte(night.date, addDays(date, -70)))
-      .orderBy(asc(night.date)),
-    db()
-      .select()
-      .from(tag)
-      .where(gte(tag.date, addDays(date, -70))),
+  const [{ nights, lastNight }, wellness, events, athlete, [lastSync]] = await Promise.all([
+    loadNights(date, 70),
     orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
     orNothing(intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 6)}`), []),
     orNothing(intervals<Athlete>(""), {}),
     db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
   ]);
-  const tagged = new Set(tags.map((t) => t.date));
-  const nights = rows.map((n) => ({ ...n, tagged: tagged.has(n.date) }));
   const w = wellness.find((x) => x.id === date);
-  const tsb = w?.ctl !== undefined && w.atl !== undefined ? w.ctl - w.atl : undefined;
+  const tsb = tsbOf(w);
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;
-  const lastNight = nights.find((n) => n.date === date);
   return {
     date,
     nights,

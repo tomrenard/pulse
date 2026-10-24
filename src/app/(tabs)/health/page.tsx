@@ -14,22 +14,20 @@ const avg = (xs: (number | null | undefined)[]) => {
 
 export default async function HealthPage() {
   const h = await loadHealth();
-  const { nights, ready } = h;
-  const last = nights.at(-1);
+  const { nights, ready, lastNight: last } = h;
   const recent = (days: number) => nights.filter((n) => n.date > addDays(h.date, -days));
   const sleep7 = avg(recent(7).map((n) => n.asleepSecs));
   const sleep30 = avg(recent(30).map((n) => n.asleepSecs));
   const spread = midpointSpreadMin(recent(7));
   const series = (days: number, key: "hrv" | "rhr" | "stress" | "asleepSecs") =>
-    recent(days)
-      .filter((n) => n[key] != null)
-      .map((n) => ({ date: n.date, value: n[key] as number }));
+    recent(days).flatMap((n) => (n[key] == null ? [] : [{ date: n.date, value: n[key] }]));
   const hrvState = !ready.normal
     ? `Normal after 14 nights · ${ready.nights} so far`
-    : ready.hrv7 && ready.hrv7 < ready.normal.low
-      ? "7-night HRV below your normal"
-      : "7-night HRV in your normal";
-  const lastTags = last ? (h.tagsByDate.get(last.date) ?? []) : [];
+    : !ready.hrv7
+      ? "Too few nights this week to judge"
+      : ready.hrv7 < ready.normal.low
+        ? "7-night HRV below your normal"
+        : "7-night HRV in your normal";
 
   return (
     <Sky state={ready.state}>
@@ -40,24 +38,26 @@ export default async function HealthPage() {
         </div>
       </Hero>
 
-      <Module title={`Tag last night${last ? ` · ${last.date.slice(5)}` : ""}`}>
+      <Module title="Tag last night">
         <div className="mod-b">
-          <div className="chips" style={{ justifyContent: "flex-start", marginTop: 0 }}>
+          <div className="chips start">
             {TAGS.map((kind) => (
               <form key={kind} action={toggleTag}>
-                <input type="hidden" name="date" value={last?.date ?? h.date} />
+                <input type="hidden" name="date" value={h.date} />
                 <input type="hidden" name="kind" value={kind} />
                 <button
                   type="submit"
-                  className={`chip${lastTags.includes(kind) ? " flag" : ""}`}
-                  aria-pressed={lastTags.includes(kind)}
+                  className={`chip${h.lastTags.includes(kind) ? " flag" : ""}`}
+                  aria-pressed={h.lastTags.includes(kind)}
                 >
                   {kind}
                 </button>
               </form>
             ))}
           </div>
-          <p className="say dim">Tagged nights stay out of your HRV normal.</p>
+          <p className="say dim">
+            The night that ended this morning. Tagged nights stay out of your HRV normal.
+          </p>
         </div>
       </Module>
 
@@ -83,7 +83,7 @@ export default async function HealthPage() {
           {last?.deepPct != null && (
             <>
               <div className="stages" aria-hidden="true">
-                <i style={{ flex: last.deepPct ?? 0, background: "#5b4bd6" }} />
+                <i style={{ flex: last.deepPct, background: "#5b4bd6" }} />
                 <i style={{ flex: last.lightPct ?? 0, background: "var(--sleep)" }} />
                 <i style={{ flex: last.remPct ?? 0, background: "#d9a6ff" }} />
                 <i
@@ -164,6 +164,8 @@ export default async function HealthPage() {
             <input
               name="kg"
               inputMode="decimal"
+              pattern="\d{2,3}([.,]\d{1,2})?"
+              title="Weight in kg, like 67.4"
               placeholder="Today, kg"
               aria-label="Today's weight in kg"
               className="field"

@@ -205,7 +205,7 @@ export function HrvList({
               <span>
                 {n.date === date ? "Today" : weekday(n.date)}
                 {n.tagged && (
-                  <span className="tagged" title="Tagged night">
+                  <span className="tagged" role="img" aria-label="tagged night">
                     ●
                   </span>
                 )}
