@@ -3,6 +3,7 @@ import { today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "@/lib/level";
 import { orNothing } from "@/lib/nights";
+import { bestVdot, cyclingVo2 } from "@/lib/races";
 
 /** Record windows, as intervals.icu curve ids: all time, 1 year, 6 months, 6 weeks. */
 export const WINDOWS = [
@@ -34,7 +35,7 @@ type PowerCurve = {
   powerModels?: { ftp?: number }[];
 };
 type PaceCurve = { id: string; distance?: number[]; values?: number[] };
-type Athlete = { sportSettings?: { types?: string[]; ftp?: number }[] };
+type Athlete = { icu_weight?: number; sportSettings?: { types?: string[]; ftp?: number }[] };
 
 const HOUR = { next: { revalidate: 3600 } };
 const curves = WINDOWS.map(([id]) => id).join(",");
@@ -93,11 +94,21 @@ export async function loadRecords() {
       ride: rideG && { ...rideG, beats: beatsText(rideBeats(rideG.wkg)) },
     };
   };
+  /** VO2max estimates per window: running VDOT and cycling Hawley & Noakes. */
+  const vo2 = WINDOWS.map(([id], w) => {
+    const c = powerAt(id);
+    return {
+      run: bestVdot(run.map((r) => ({ distance: r.distance, secs: r.values[w] }))),
+      ride: cyclingVo2(at(c?.secs, c?.watts, 300), at(c?.secs, c?.watts_per_kg, 300)),
+    };
+  });
   return {
     run,
     power,
+    vo2,
     ftpSet: athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp,
     /** intervals.icu's power-model FTP from the last 6 weeks of riding. */
+    weight: athlete.icu_weight,
     ftpModel: Math.round(powerAt("42d")?.powerModels?.[0]?.ftp ?? 0) || undefined,
     pb: level(0),
     now: level(3),

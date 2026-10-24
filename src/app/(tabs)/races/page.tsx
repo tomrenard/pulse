@@ -1,9 +1,15 @@
 import type { Badge } from "@/lib/badges";
 import { clock as time } from "@/lib/format";
+import { criticalSpeed, predictTime, swimCss } from "@/lib/races";
+import { loadRaceExtras } from "@/lib/races-load";
 import { loadRecords, WINDOWS } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
+import { LongRide } from "./LongRide";
+
+const daysTo = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 864e5);
 
 function Table({
   rows,
@@ -91,8 +97,11 @@ function Badges({ list }: { list: Badge[] }) {
 }
 
 export default async function RacesPage() {
-  const r = await loadRecords();
+  const [r, x] = await Promise.all([loadRecords(), loadRaceExtras()]);
   const pb5k = r.run[0]?.values[0];
+  const cs = criticalSpeed(x.runPoints);
+  const css = swimCss(x.swim200, x.swim400);
+  const vo2 = (v?: number) => (v ? Math.round(v) : "–");
   return (
     <Sky state="go">
       <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km best">
@@ -167,13 +176,115 @@ export default async function RacesPage() {
         results) and Roadman benchmarks for the percentages, which are approximate.
       </p>
 
-      <Module title="Coming next">
-        <ul>
-          <li>5 km to marathon estimates from critical speed, next to COROS</li>
-          <li>Running and cycling VO₂max, swim CSS</li>
-          <li>Long-ride estimate from a GPX route</li>
-          <li>A/B/C race countdown, gear</li>
-        </ul>
+      <Module title="Races ahead">
+        <div className="mod-b">
+          {x.races.length === 0 ? (
+            <p className="say dim" style={{ marginTop: 0 }}>
+              No race in intervals.icu for the next 12 months. Add one as an A, B or C race.
+            </p>
+          ) : (
+            <ul className="plain">
+              {x.races.map((race) => (
+                <li key={race.id}>
+                  <b className="num">{daysTo(x.date, race.start_date_local.slice(0, 10))} d</b>{" "}
+                  {race.name ?? "Race"}{" "}
+                  <span className="dim">· {race.category.replace("RACE_", "")} race</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Module>
+
+      <Module title="VO₂max estimates">
+        <div className="mod-b">
+          <table className="records num">
+            <thead>
+              <tr>
+                <th scope="col">
+                  <span className="sr">Sport</span>
+                </th>
+                <th scope="col">Best</th>
+                <th scope="col">6 wk</th>
+                <th scope="col">COROS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Running</th>
+                <td className="pb">{vo2(r.vo2[0]?.run)}</td>
+                <td>{vo2(r.vo2[3]?.run)}</td>
+                <td>{vo2(x.coros?.vo2max)}</td>
+              </tr>
+              <tr>
+                <th scope="row">Riding</th>
+                <td className="pb">{vo2(r.vo2[0]?.ride)}</td>
+                <td>{vo2(r.vo2[3]?.ride)}</td>
+                <td>–</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="say dim">
+            ml/kg/min. Running: Daniels VDOT from your best effort (1.5 km to half). Riding: Hawley
+            &amp; Noakes from best 5-min power at that day's weight. Both are estimates from
+            training bests, typically within 5–10% of a lab test at best.
+          </p>
+        </div>
+      </Module>
+
+      <Module title="Run race estimates">
+        <div className="mod-b">
+          {"cs" in cs ? (
+            <div className="stats num">
+              {[
+                [5000, "5 km"],
+                [10000, "10 km"],
+              ].map(([d, label]) => {
+                const t = predictTime(cs, d as number);
+                return (
+                  <span key={label}>
+                    <b>
+                      {time(t * 0.94)}–{time(t * 1.06)}
+                    </b>
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="say dim" style={{ marginTop: 0 }}>
+              {cs.problem}
+            </p>
+          )}
+          {x.coros?.k5 && (
+            <p className="say">
+              COROS predicts 5 km {time(x.coros.k5)}, 10 km {time(x.coros.k10)}, half{" "}
+              {time(x.coros.half)}, marathon {time(x.coros.marathon)}.
+            </p>
+          )}
+          <p className="say dim">
+            Ours: critical speed from your hardest 3–15 min efforts of the last 12 weeks, ±6%
+            (checked against your own races, where it ran ~2% slow). COROS uses its own model.
+          </p>
+        </div>
+      </Module>
+
+      <Module title="Swim · critical speed">
+        <div className="mod-b">
+          <p className="say" style={{ marginTop: 0 }}>
+            {!css
+              ? "Needs a best 200 m and 400 m swim."
+              : "problem" in css
+                ? css.problem
+                : `CSS ${time(css.per100)} /100 m, from your best 200 m (${time(x.swim200)}) and 400 m (${time(x.swim400)}).`}
+          </p>
+        </div>
+      </Module>
+
+      <Module title="Long ride estimate">
+        <div className="mod-b">
+          <LongRide ftp={r.ftpModel ?? r.ftpSet} kg={r.weight} />
+        </div>
       </Module>
     </Sky>
   );

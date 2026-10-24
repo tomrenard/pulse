@@ -3,6 +3,7 @@ import { db } from "@/db/client";
 import { log, night } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { putWellness } from "@/lib/intervals";
+import { parseCorosFitness } from "@/lib/races";
 import { accessToken } from "./auth.ts";
 import { corosSession } from "./mcp.ts";
 import {
@@ -40,6 +41,11 @@ export async function syncCoros(start = addDays(today(), -2), end = today()) {
     lists.push(parseStress(await tool("queryStressLevel", { days })));
     lists.push(parseRestingHr(await tool("queryRestingHeartRate", { days })));
     const nights = mergeNights(...lists).filter((n) => n.date >= from && n.date <= to);
+    // COROS's own VO2max and race predictor, kept for comparison on the Races tab.
+    const fitness = parseCorosFitness(await tool("queryFitnessAssessmentOverview"));
+    await db()
+      .insert(log)
+      .values({ kind: "coros-fitness", detail: JSON.stringify(fitness) });
     await save(nights);
     await putWellness(
       nights
