@@ -1,6 +1,6 @@
 import { asc, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/db/client";
-import { log, night } from "@/db/schema";
+import { log, night, tag } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { readiness } from "@/lib/readiness";
@@ -45,17 +45,23 @@ export function profile(steps: Step[] = [], ftp = 0): [number, number][] {
 /** Everything the Today screen shows, fetched in parallel. */
 export async function loadToday() {
   const date = today();
-  const [nights, wellness, events, athlete, [lastSync]] = await Promise.all([
+  const [rows, tags, wellness, events, athlete, [lastSync]] = await Promise.all([
     db()
       .select()
       .from(night)
       .where(gte(night.date, addDays(date, -70)))
       .orderBy(asc(night.date)),
+    db()
+      .select()
+      .from(tag)
+      .where(gte(tag.date, addDays(date, -70))),
     orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
     orNothing(intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 6)}`), []),
     orNothing(intervals<Athlete>(""), {}),
     db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
   ]);
+  const tagged = new Set(tags.map((t) => t.date));
+  const nights = rows.map((n) => ({ ...n, tagged: tagged.has(n.date) }));
   const w = wellness.find((x) => x.id === date);
   const tsb = w?.ctl !== undefined && w.atl !== undefined ? w.ctl - w.atl : undefined;
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;

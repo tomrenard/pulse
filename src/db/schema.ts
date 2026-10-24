@@ -1,4 +1,13 @@
-import { index, integer, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  real,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 /** Things that happened: failed logins, sync runs. One table, read by kind. */
 export const log = pgTable(
@@ -46,3 +55,10 @@ export const night = pgTable("night", {
   stress: integer("stress"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** Nights tagged by hand (alcohol, illness, …). Tagged nights stay out of the HRV baseline. */
+export const tag = pgTable(
+  "tag",
+  { date: text("date").notNull(), kind: text("kind").notNull() },
+  (t) => [primaryKey({ columns: [t.date, t.kind] })],
+);

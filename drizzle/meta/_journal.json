@@ -15,6 +15,13 @@
       "when": 1792859168856,
       "tag": "0001_organic_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792861080620,
+      "tag": "0002_typical_joseph",
+      "breakpoints": true
     }
   ]
 }

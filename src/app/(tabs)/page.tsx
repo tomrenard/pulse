@@ -5,7 +5,8 @@ import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
 import { Sky } from "./Sky";
-import { FormTile, HrvList, hm, PlanStrip, RhrTile, SleepTile, StressTile, Workout } from "./Today";
+import { FormTile, HrvList, PlanStrip, RhrTile, SleepTile, StressTile, Workout } from "./Today";
+import { hm } from "./ui";
 
 /** Opening the app before the 09:00 UTC cron pulls last night, at most every 20 minutes. */
 const PULL_AFTER_MS = 20 * 60 * 1000;

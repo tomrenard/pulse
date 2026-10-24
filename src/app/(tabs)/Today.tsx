@@ -2,13 +2,9 @@ import type { night } from "@/db/schema";
 import { addDays, weekday } from "@/lib/date";
 import { MIN_NIGHTS, rhrNormal, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
+import { Gauge, hm, Module } from "./ui";
 
-type Night = typeof night.$inferSelect;
-
-export const hm = (secs?: number | null) =>
-  secs
-    ? `${Math.floor(secs / 3600)}h ${String(Math.round((secs % 3600) / 60)).padStart(2, "0")}m`
-    : "–";
+type Night = typeof night.$inferSelect & { tagged?: boolean };
 
 const NEED = hm(SLEEP_NEED_SECS).replace("h ", " h ").replace("m", "");
 
@@ -51,23 +47,6 @@ function Icon({ sport }: { sport: string }) {
     >
       {SPORT[sport]}
     </svg>
-  );
-}
-
-function Module({
-  title,
-  children,
-  className = "",
-}: {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={`mod ${className}`} aria-label={title}>
-      <div className="mod-h">{title}</div>
-      {children}
-    </section>
   );
 }
 
@@ -223,7 +202,14 @@ export function HrvList({
           const below = normal ? hrv < normal.low : false;
           return (
             <li key={n.date} className="row num">
-              <span>{n.date === date ? "Today" : weekday(n.date)}</span>
+              <span>
+                {n.date === date ? "Today" : weekday(n.date)}
+                {n.tagged && (
+                  <span className="tagged" title="Tagged night">
+                    ●
+                  </span>
+                )}
+              </span>
               <span className="slp">{hm(n.asleepSecs).replace(" ", "")}</span>
               <span className="lo">{Math.round(n.hrvLow ?? hrv)}</span>
               <span className="sr">
@@ -305,25 +291,6 @@ export function SleepTile({
         </div>
       </div>
     </Module>
-  );
-}
-
-function Gauge({
-  value,
-  min,
-  max,
-  color,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  color: string;
-}) {
-  const pos = `${(((Math.min(max, Math.max(min, value)) - min) / (max - min)) * 100).toFixed(1)}%`;
-  return (
-    <div className="gbar" style={{ background: color }}>
-      <span className="dot" style={{ left: pos }} />
-    </div>
   );
 }
 

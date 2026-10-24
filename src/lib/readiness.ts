@@ -11,6 +11,7 @@ import { addDays } from "./date.ts";
  *   amber = HRV below normal, or two other flags
  *   green = otherwise
  * Shown from 14 nights of HRV, marked provisional until 30. Needs 4 of the last 7 nights.
+ * Nights tagged by hand (alcohol, illness) stay out of the normal, as HRV4Training advises.
  */
 
 export type NightInput = {
@@ -18,6 +19,8 @@ export type NightInput = {
   hrv?: number | null;
   rhr?: number | null;
   asleepSecs?: number | null;
+  /** Tagged by hand (alcohol, illness, …): counts this week, but not in your normal. */
+  tagged?: boolean;
 };
 export type State = "go" | "mid" | "stop" | "building";
 export type Reason = { key: "hrv" | "rhr" | "sleep" | "form"; label: string; flag: boolean };
@@ -39,7 +42,7 @@ const within = (n: NightInput, date: string, days: number) =>
 /** Your HRV normal band in ms (back-transformed from ln), from the 60 days up to `date`. */
 function hrvNormal(nights: NightInput[], date: string) {
   const lns = nights
-    .filter((n) => n.hrv && within(n, date, 60))
+    .filter((n) => n.hrv && !n.tagged && within(n, date, 60))
     .map((n) => Math.log(n.hrv as number));
   if (lns.length < MIN_NIGHTS) return { nights: lns.length };
   const m = mean(lns);

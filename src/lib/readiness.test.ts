@@ -71,3 +71,16 @@ test("sleep midpoint spread crosses midnight", () => {
     60,
   );
 });
+
+test("tagged nights stay out of the normal", () => {
+  // Ten alcohol nights at 40 ms would drag the normal down; tagged, they don't.
+  const drunk = Array.from({ length: 10 }, (_, i) => ({ date: day(i), hrv: 40, tagged: true }));
+  const r = readiness([...drunk, ...nights().slice(10)], last, -10);
+  const untagged = readiness(
+    [...drunk.map((n) => ({ ...n, tagged: false })), ...nights().slice(10)],
+    last,
+    -10,
+  );
+  expect(r.normal?.low).toBeGreaterThan(untagged.normal?.low ?? 0);
+  expect(r.nights).toBe(20);
+});
