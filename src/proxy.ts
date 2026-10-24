@@ -2,7 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE, validSession } from "@/lib/session";
 
 export const config = {
-  matcher: ["/((?!(?:login|manifest\\.webmanifest|icon\\.svg|apple-icon)$|_next/static/).*)"],
+  // api/cron checks its own CRON_SECRET (Vercel cron sends no cookie).
+  matcher: [
+    "/((?!(?:login|manifest\\.webmanifest|icon\\.svg|apple-icon)$|api/cron/|_next/static/).*)",
+  ],
 };
 
 /** Everything except the login page needs the signed session cookie. */

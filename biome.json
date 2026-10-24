@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!drizzle", "!design"]
+    "includes": ["**", "!drizzle", "!design", "!.agents", "!.claude"]
   },
   "formatter": {
     "indentStyle": "space",
