@@ -5,12 +5,12 @@ import { loadReview } from "@/lib/review-load";
 import { loadTraining } from "@/lib/training";
 import { mondayOf, sportOf } from "@/lib/volume";
 import { Zones } from "../charts";
+import { FitnessChart } from "../FitnessChart";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module, SportChip } from "../ui";
 import { Volume } from "../Volume";
 import { WeekReview } from "../WeekReview";
-import { FitnessChart } from "./FitnessChart";
 
 export default async function TrainingPage() {
   const [t, review] = await Promise.all([loadTraining(), loadReview(today())]);

@@ -1507,7 +1507,6 @@ ul.plan-steps {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
 }
 .fit-grid {
   stroke: var(--hair);
@@ -1515,7 +1514,6 @@ ul.plan-steps {
 }
 .fit-line {
   fill: none;
-  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 .fit-tick {
@@ -1533,9 +1531,6 @@ ul.plan-steps {
   font-weight: 700;
   text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
   pointer-events: none;
-}
-.fit-panel svg.clip {
-  overflow: hidden;
 }
 .fit-cursor {
   position: absolute;

@@ -26,7 +26,7 @@ export function projectFitness(start: string, ctl0: number, atl0: number, loads:
   });
 }
 
-/** Form as % of fitness, intervals.icu's zones (fresh +5…+20 %, optimal −10…−30 %). */
+/** Form as % of fitness, see FORM_ZONES. */
 export const formPct = (d: { ctl: number; tsb: number }) => (d.ctl > 0 ? (d.tsb / d.ctl) * 100 : 0);
 
 /** intervals.icu's form zones, on form as a % of fitness, top down. */

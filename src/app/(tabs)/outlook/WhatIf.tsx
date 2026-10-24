@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { formPct, type PowerFit, powerAt, projectFitness } from "@/lib/outlook";
-import { Forecast } from "../charts";
+import { type PowerFit, powerAt, projectFitness } from "@/lib/outlook";
+import { FitnessChart } from "../FitnessChart";
 
 type Rate = { rate: number; typical: boolean };
 
@@ -30,7 +30,6 @@ export function WhatIf({
   const days = weeks * 7;
   const daily = (ride * rideRate.rate + run * runRate.rate) / 7;
   const path = projectFitness(date, ctl, atl, Array(days).fill(daily));
-  const end = path.at(-1);
   const rideLoads = Array(days).fill((ride * rideRate.rate) / 7);
   const rideEnd = projectFitness(date, rideCtl, rideCtl, rideLoads).at(-1)?.ctl ?? 0;
   const power = fit && powerAt(fit, rideEnd);
@@ -65,23 +64,15 @@ export function WhatIf({
       {slider("Ride", ride, setRide, [0, 20, 0.5], "h/wk")}
       {slider("Run", run, setRun, [0, 10, 0.5], "h/wk")}
       {slider("For", weeks, setWeeks, [1, 16, 1], weeks === 1 ? "week" : "weeks")}
-      <Forecast days={path} />
-      {end && (
+      <FitnessChart days={path} endLabel={`In ${weeks} ${weeks === 1 ? "week" : "weeks"}`} />
+      {power && fit && (
         <div className="stats num">
           <span>
-            <b>{Math.round(end.ctl)}</b>fitness
+            <b>
+              {Math.round(power * (1 - fit.p80))}–{Math.round(power * (1 + fit.p80))} W
+            </b>
+            typical 20-min power then
           </span>
-          <span>
-            <b>{Math.round(formPct(end))}%</b>form
-          </span>
-          {power && fit && (
-            <span>
-              <b>
-                {Math.round(power * (1 - fit.p80))}–{Math.round(power * (1 + fit.p80))} W
-              </b>
-              typical 20-min
-            </span>
-          )}
         </div>
       )}
     </>
