@@ -6,7 +6,7 @@ import { CorosCard } from "./CorosCard";
 import { Hero } from "./Hero";
 import { PushToggle } from "./PushToggle";
 import { Sky } from "./Sky";
-import { HrvList, Signals, Workout } from "./Today";
+import { ComingUp, Signals, Workout } from "./Today";
 import { Volume } from "./Volume";
 import { WeekReview } from "./WeekReview";
 
@@ -43,9 +43,9 @@ export default async function TodayPage() {
         tsb={t.tsb}
       />
       <Workout event={t.workout} notes={t.notes} ftp={t.ftp} />
+      <ComingUp date={t.date} events={t.coming} ftp={t.ftp} />
       {review && <WeekReview r={review} />}
-      <Volume weeks={t.volume} href="/training" />
-      <HrvList date={t.date} nights={t.nights} normal={ready.normal} />
+      <Volume weeks={t.volume} planned={t.plannedHours} href="/training" />
       {/* The COROS card only when something needs you: not connected, or the sync broke. */}
       {(!t.corosConnected || syncFailed) && <CorosCard lastSync={t.lastSync} />}
       <PushToggle />

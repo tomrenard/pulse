@@ -1,4 +1,5 @@
 /** Building blocks shared by the tabs. */
+import { SPORT_COLOR, type Sport } from "@/lib/volume";
 import { Info } from "./Info";
 
 export { hm } from "@/lib/format";
@@ -69,4 +70,31 @@ export const Glyph = ({ children, width = 1.8 }: { children: React.ReactNode; wi
   >
     {children}
   </svg>
+);
+
+const SPORT_GLYPH: Record<Sport, React.ReactNode> = {
+  ride: (
+    <>
+      <circle cx="6" cy="16" r="3.5" />
+      <circle cx="18" cy="16" r="3.5" />
+      <path d="M6 16 9.5 9h5.5L18 16M9.5 9l3 7" />
+    </>
+  ),
+  run: (
+    <>
+      <circle cx="14" cy="4.5" r="1.8" />
+      <path d="M6 21l3.5-5 3 2 1-6 3 3h3M8 11l3-3h3" />
+    </>
+  ),
+  swim: (
+    <path d="M3 17c2 0 2-1.5 4.5-1.5S9.5 17 12 17s2-1.5 4.5-1.5S18.5 17 21 17M6 13l4-5 3 3 3-2" />
+  ),
+  other: <circle cx="12" cy="12" r="5" />,
+};
+
+/** The round sport icon in lists: activities, the plan. */
+export const SportChip = ({ sport }: { sport: Sport }) => (
+  <span className="sport-chip" style={{ background: SPORT_COLOR[sport] }} aria-hidden="true">
+    <Glyph width={2}>{SPORT_GLYPH[sport]}</Glyph>
+  </span>
 );

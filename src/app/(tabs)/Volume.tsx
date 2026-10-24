@@ -25,6 +25,7 @@ export function Volume({
   title = "This week",
   href,
   compact = false,
+  planned,
 }: {
   weeks: { monday: string; sports: Totals }[];
   title?: string;
@@ -32,6 +33,8 @@ export function Volume({
   href?: string;
   /** Year view: no this-week number or split (the page hero has them). */
   compact?: boolean;
+  /** This week's planned hours, when there is a plan. */
+  planned?: number;
 }) {
   const [measure, setMeasure] = useState<Measure>("hours");
   const total = (s: Totals, m: Measure) => SPORTS.reduce((sum, sp) => sum + s[sp][m], 0);
@@ -96,6 +99,9 @@ export function Volume({
           <div className="big-num num">
             {now ? fmt("hours", total(now, "hours")) : "–"}
             <small> · {now ? fmt("km", total(now, "km")) : ""}</small>
+            {planned ? (
+              <small className="of-plan"> of {fmt("hours", planned)} planned</small>
+            ) : null}
           </div>
         )}
         {href ? (

@@ -52,7 +52,10 @@ export async function loadToday() {
     await Promise.all([
       loadNights(date, 70),
       orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
-      orNothing(intervals<PlanEvent[]>(`/events?oldest=${date}&newest=${addDays(date, 6)}`), []),
+      orNothing(
+        intervals<PlanEvent[]>(`/events?oldest=${mondayOf(date)}&newest=${addDays(date, 6)}`),
+        [],
+      ),
       orNothing(intervals<Athlete>(""), {}),
       db().select().from(log).where(eq(log.kind, "coros-sync")).orderBy(desc(log.at)).limit(1),
       orNothing(
@@ -65,6 +68,13 @@ export async function loadToday() {
     ]);
   const w = wellness.find((x) => x.id === date);
   const tsb = tsbOf(w);
+  // This week's planned hours, once the plan covers the week (a session by Wednesday): a plan
+  // that starts on Sunday would make the week look ten times over.
+  const monday = mondayOf(date);
+  const week = events.filter(
+    (e) => e.category === "WORKOUT" && e.start_date_local.slice(0, 10) <= addDays(monday, 6),
+  );
+  const covers = week.some((e) => e.start_date_local.slice(0, 10) <= addDays(monday, 2));
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;
   return {
     date,
@@ -74,9 +84,14 @@ export async function loadToday() {
     tsb,
     ftp,
     workout: events.find((e) => e.category === "WORKOUT" && e.start_date_local.startsWith(date)),
+    /** Planned sessions for the next 6 days. */
+    coming: events.filter(
+      (e) => e.category === "WORKOUT" && e.start_date_local.slice(0, 10) > date,
+    ),
     notes: events.filter((e) => e.category === "NOTE" && e.start_date_local.startsWith(date)),
     lastSync,
     volume: weeklyVolume(activities, date),
     corosConnected: connected,
+    plannedHours: covers ? week.reduce((s, e) => s + (e.moving_time ?? 0), 0) / 3600 : undefined,
   };
 }

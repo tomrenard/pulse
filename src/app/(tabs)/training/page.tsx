@@ -3,33 +3,13 @@ import { shortDate, today } from "@/lib/date";
 import { hm, hmm } from "@/lib/format";
 import { loadReview } from "@/lib/review-load";
 import { loadTraining } from "@/lib/training";
-import { mondayOf, SPORT_COLOR, sportOf } from "@/lib/volume";
+import { mondayOf, sportOf } from "@/lib/volume";
 import { Forecast, Zones } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
-import { Glyph, Module } from "../ui";
+import { Module, SportChip } from "../ui";
 import { Volume } from "../Volume";
 import { WeekReview } from "../WeekReview";
-
-const SPORT_GLYPH: Record<string, React.ReactNode> = {
-  ride: (
-    <>
-      <circle cx="6" cy="16" r="3.5" />
-      <circle cx="18" cy="16" r="3.5" />
-      <path d="M6 16 9.5 9h5.5L18 16M9.5 9l3 7" />
-    </>
-  ),
-  run: (
-    <>
-      <circle cx="14" cy="4.5" r="1.8" />
-      <path d="M6 21l3.5-5 3 2 1-6 3 3h3M8 11l3-3h3" />
-    </>
-  ),
-  swim: (
-    <path d="M3 17c2 0 2-1.5 4.5-1.5S9.5 17 12 17s2-1.5 4.5-1.5S18.5 17 21 17M6 13l4-5 3 3 3-2" />
-  ),
-  other: <circle cx="12" cy="12" r="5" />,
-};
 
 export default async function TrainingPage() {
   const [t, review] = await Promise.all([loadTraining(), loadReview(today())]);
@@ -47,13 +27,7 @@ export default async function TrainingPage() {
     return (
       <li key={a.id}>
         <Link href={`/training/${a.id}`}>
-          <span
-            className="sport-chip"
-            style={{ background: SPORT_COLOR[sport] }}
-            aria-hidden="true"
-          >
-            <Glyph width={2}>{SPORT_GLYPH[sport]}</Glyph>
-          </span>
+          <SportChip sport={sport} />
           <span className="what">
             <b>{a.name ?? a.type}</b>
             <small>{shortDate(a.start_date_local)}</small>

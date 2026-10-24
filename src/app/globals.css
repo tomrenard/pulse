@@ -1393,3 +1393,56 @@ ul.tri {
   color: var(--fg-2);
   text-align: right;
 }
+
+/* The plan: next days on Today */
+.plan summary {
+  display: grid;
+  grid-template-columns: 34px 30px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.plan summary::-webkit-details-marker {
+  display: none;
+}
+.plan-day {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+.plan-rest {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--fg-3);
+}
+.plan-detail {
+  padding-left: 84px;
+}
+.of-plan {
+  display: block;
+  font-size: 13px;
+  color: var(--fg-2);
+}
+.plan details[open] {
+  padding-bottom: 10px;
+}
+.plan-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.42;
+  color: var(--fg-2);
+  white-space: pre-line;
+}
+ul.plan-steps {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg-2);
+}

@@ -5,6 +5,7 @@ import { MIN_NIGHTS, mean, midpointSpreadMin, SLEEP_NEED_SECS } from "@/lib/read
 import { Bars, Line } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
+import { HrvList } from "../Today";
 import { Delta, Module } from "../ui";
 import { saveWeight, toggleTag } from "./actions";
 
@@ -153,6 +154,8 @@ export default async function HealthPage() {
           />
         </div>
       </Module>
+
+      <HrvList date={h.date} nights={nights} normal={ready.normal} />
 
       <Module
         title="Resting HR · 60 nights"

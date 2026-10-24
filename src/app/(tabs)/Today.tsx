@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { night } from "@/db/schema";
-import { weekday } from "@/lib/date";
+import { addDays, weekday } from "@/lib/date";
 import { hmm } from "@/lib/format";
+import { splitPlan } from "@/lib/plan";
 import { MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
-import { Delta, Dot, Glyph, hm, Module } from "./ui";
+import { sportOf } from "@/lib/volume";
+import { Delta, Dot, Glyph, hm, Module, SportChip } from "./ui";
 
 type Night = typeof night.$inferSelect & { tagged?: boolean };
 
@@ -44,6 +46,75 @@ function Profile({ steps, ftp }: { steps: [number, number][]; ftp: number }) {
   );
 }
 
+/** The coach's note, the steps, and for rides the power profile. */
+function PlanDetail({ event, ftp }: { event: PlanEvent; ftp: number }) {
+  const { note, steps } = splitPlan(event.description);
+  return (
+    <>
+      {sportOf(event.type) === "ride" && steps.length > 1 && (
+        <Profile steps={profile(event.workout_doc?.steps, ftp)} ftp={ftp} />
+      )}
+      {note && <p className="plan-note">{note}</p>}
+      {steps.length > 0 && (
+        <ul className="plan-steps num">
+          {steps.map((step, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: steps repeat ("- 3m 130W") and never reorder
+            <li key={i}>{step}</li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** The next 6 days of the plan, rest days included; tap a session for its note and steps. */
+export function ComingUp({
+  date,
+  events,
+  ftp,
+}: {
+  date: string;
+  events: PlanEvent[];
+  ftp: number;
+}) {
+  if (events.length === 0) return null;
+  const days = Array.from({ length: 6 }, (_, i) => addDays(date, i + 1));
+  const total = events.reduce((s, e) => s + (e.moving_time ?? 0), 0);
+  return (
+    <Module title="Coming up" value={hmm(total)}>
+      <ul className="feed plan">
+        {days.flatMap((day) => {
+          const sessions = events.filter((e) => e.start_date_local.startsWith(day));
+          if (sessions.length === 0)
+            return (
+              <li key={day} className="plan-rest">
+                <span className="plan-day">{weekday(day)}</span>
+                <span>Rest</span>
+              </li>
+            );
+          return sessions.map((e, i) => (
+            <li key={e.id}>
+              <details>
+                <summary>
+                  <span className="plan-day">{i === 0 ? weekday(day) : ""}</span>
+                  <SportChip sport={sportOf(e.type)} />
+                  <span className="what">
+                    <b>{e.name ?? e.type}</b>
+                  </span>
+                  <span className="num figures">{e.moving_time ? hmm(e.moving_time) : "–"}</span>
+                </summary>
+                <div className="plan-detail">
+                  <PlanDetail event={e} ftp={ftp} />
+                </div>
+              </details>
+            </li>
+          ));
+        })}
+      </ul>
+    </Module>
+  );
+}
+
 export function Workout({
   event,
   notes,
@@ -73,7 +144,7 @@ export function Workout({
                 </span>
               ) : null}
             </div>
-            <Profile steps={profile(event.workout_doc?.steps, ftp)} ftp={ftp} />
+            <PlanDetail event={event} ftp={ftp} />
           </>
         ) : null}
         {notes.map((n) => (
