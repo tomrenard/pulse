@@ -4,6 +4,7 @@
  * ranges are the 80th percentile of past errors, not the average.
  */
 import { addDays } from "./date.ts";
+import { mean } from "./readiness.ts";
 
 const K_CTL = 1 - Math.exp(-1 / 42);
 const K_ATL = 1 - Math.exp(-1 / 7);
@@ -32,8 +33,22 @@ export const formPct = (d: { ctl: number; tsb: number }) => (d.ctl > 0 ? (d.tsb 
  * Race-day form target: long events (≥ 4 h) want about neutral to slightly fresh, so fitness
  * isn't lost; short ones tolerate a sharper taper.
  */
-export function formTarget(durationSecs?: number) {
-  return durationSecs && durationSecs >= 4 * 3600
+export function formTarget(race: {
+  type?: string;
+  moving_time?: number | null;
+  time_target?: number | null;
+  distance?: number | null;
+  distance_target?: number | null;
+}) {
+  const secs = race.moving_time ?? race.time_target;
+  const metres = race.distance ?? race.distance_target;
+  const long = secs
+    ? secs >= 4 * 3600
+    : metres
+      ? metres >= (/run/i.test(race.type ?? "") ? 30_000 : 120_000)
+      : undefined;
+  if (long === undefined) return undefined; // length unknown: no target rather than a wrong one
+  return long
     ? { low: 0, high: 10, why: "long event: arrive neutral to slightly fresh" }
     : { low: 5, high: 20, why: "arrive fresh" };
 }
@@ -49,7 +64,11 @@ const isRide = (type = "") => /ride/i.test(type);
 const isRun = (type = "") => /run/i.test(type);
 
 /** Load per hour by sport: total load ÷ total hours over the window (not a per-session median). */
-export function loadPerHour(activities: Activity[], sport: "ride" | "run", fallback: number) {
+export function loadPerHour(
+  activities: Activity[],
+  sport: "ride" | "run",
+  fallback: number,
+): { rate: number; typical: boolean } {
   const pick = sport === "ride" ? isRide : isRun;
   let load = 0;
   let secs = 0;
@@ -58,7 +77,9 @@ export function loadPerHour(activities: Activity[], sport: "ride" | "run", fallb
     load += a.icu_training_load;
     secs += a.moving_time;
   }
-  return secs >= 5 * 3600 ? load / (secs / 3600) : fallback;
+  return secs >= 5 * 3600
+    ? { rate: load / (secs / 3600), typical: false }
+    : { rate: fallback, typical: true };
 }
 
 /** Ride-only fitness per day from ride loads, built from the first activity. */
@@ -99,8 +120,8 @@ export function powerVsFitness(
     points.push({ ctl, power: Math.max(...window.map((x) => x.best20 as number)) });
   });
   if (points.length < 8) return undefined;
-  const mx = points.reduce((s, p) => s + p.ctl, 0) / points.length;
-  const my = points.reduce((s, p) => s + p.power, 0) / points.length;
+  const mx = mean(points.map((p) => p.ctl));
+  const my = mean(points.map((p) => p.power));
   const sxx = points.reduce((s, p) => s + (p.ctl - mx) ** 2, 0);
   const b = sxx ? points.reduce((s, p) => s + (p.ctl - mx) * (p.power - my), 0) / sxx : 0;
   if (b <= 0) return undefined;
@@ -112,12 +133,17 @@ export function powerVsFitness(
     a,
     b,
     n: points.length,
-    p80: errors[Math.floor(errors.length * 0.8)] ?? 0,
+    p80: errors[Math.ceil(errors.length * 0.8) - 1] ?? 0, // nearest-rank 80th percentile
     minCtl: Math.min(...points.map((p) => p.ctl)),
     maxCtl: Math.max(...points.map((p) => p.ctl)),
-    /** Typical 20-min best at a ride CTL, clamped to the range you have actually been in. */
-    at(ctl: number) {
-      return a + b * Math.min(this.maxCtl, Math.max(this.minCtl, ctl));
-    },
   };
 }
+
+export type PowerFit = NonNullable<ReturnType<typeof powerVsFitness>>;
+
+/** Ride fitness clamped to the range you have actually been in. */
+export const clampCtl = (fit: PowerFit, ctl: number) =>
+  Math.min(fit.maxCtl, Math.max(fit.minCtl, ctl));
+
+/** Typical 20-min best at a ride fitness, from your history. */
+export const powerAt = (fit: PowerFit, ctl: number) => fit.a + fit.b * clampCtl(fit, ctl);

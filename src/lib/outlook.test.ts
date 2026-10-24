@@ -4,6 +4,7 @@ import {
   formPct,
   formTarget,
   loadPerHour,
+  powerAt,
   powerVsFitness,
   projectFitness,
   rideCtlByDay,
@@ -21,9 +22,12 @@ test("fitness projection: steady load converges, rest makes you fresh", () => {
 
 test("form % and race-length target", () => {
   expect(formPct({ ctl: 50, tsb: 5 })).toBe(10);
-  expect(formTarget(30 * 3600)).toMatchObject({ low: 0, high: 10 });
-  expect(formTarget(20 * 60)).toMatchObject({ low: 5, high: 20 });
-  expect(formTarget()).toMatchObject({ low: 5, high: 20 });
+  expect(formTarget({ moving_time: 30 * 3600 })).toMatchObject({ low: 0, high: 10 });
+  expect(formTarget({ moving_time: 20 * 60 })).toMatchObject({ low: 5, high: 20 });
+  // intervals.icu race events often have no duration: distance decides, by sport.
+  expect(formTarget({ type: "Ride", distance: 735_000 })).toMatchObject({ low: 0 });
+  expect(formTarget({ type: "Run", distance: 10_000 })).toMatchObject({ low: 5 });
+  expect(formTarget({ type: "Ride" })).toBeUndefined();
 });
 
 test("load per hour weights by time, not by session", () => {
@@ -37,8 +41,8 @@ test("load per hour weights by time, not by session", () => {
     },
     { start_date_local: "2026-10-02", type: "Run", icu_training_load: 50, moving_time: 3600 },
   ];
-  expect(loadPerHour(acts, "ride", 40)).toBeCloseTo(360 / 6.5);
-  expect(loadPerHour(acts, "run", 45)).toBe(45); // under 5 h of running: fallback
+  expect(loadPerHour(acts, "ride", 40).rate).toBeCloseTo(360 / 6.5);
+  expect(loadPerHour(acts, "run", 45)).toEqual({ rate: 45, typical: true }); // under 5 h
 });
 
 test("power vs ride fitness: fit, clamp, and refuse too little data", () => {
@@ -54,7 +58,8 @@ test("power vs ride fitness: fit, clamp, and refuse too little data", () => {
     return { monday, best20: 150 + 2 * (ctl.get(addDays(monday, 6)) ?? 0) };
   });
   const fit = powerVsFitness(weeks, ctl);
-  expect(fit?.b).toBeGreaterThan(0);
-  expect(fit?.at(1000)).toBeCloseTo(fit?.at(fit.maxCtl) ?? 0); // clamped to seen range
+  if (!fit) throw new Error("expected a fit");
+  expect(fit.b).toBeCloseTo(2, 1); // window and CTL dates line up
+  expect(powerAt(fit, 1000)).toBeCloseTo(powerAt(fit, fit.maxCtl)); // clamped to seen range
   expect(powerVsFitness(weeks.slice(0, 10), ctl)).toBeUndefined();
 });

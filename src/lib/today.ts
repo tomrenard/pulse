@@ -21,6 +21,9 @@ export type PlanEvent = {
   name?: string;
   description?: string;
   moving_time?: number;
+  time_target?: number;
+  distance?: number;
+  distance_target?: number;
   icu_training_load?: number;
   workout_doc?: { steps?: Step[] };
 };

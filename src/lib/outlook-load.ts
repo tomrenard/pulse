@@ -12,11 +12,6 @@ const DAY = 24 * 3600;
 const POWER_FROM = "2025-01-06";
 const LOADS_FROM = "2024-08-01";
 
-const mondayOf = (date: string) => {
-  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
-  return addDays(date, -((day + 6) % 7));
-};
-
 /** Weekly best 20-min power (Mon–Sun) since POWER_FROM, 13 weeks per call, cached a day. */
 async function weeklyBest20(until: string) {
   const weeks: string[] = [];
@@ -59,7 +54,8 @@ export async function loadOutlook() {
       ),
       [],
     ),
-    weeklyBest20(mondayOf(addDays(date, -7))),
+    // Weeks are Mondays from POWER_FROM: up to a week ago means only finished weeks.
+    weeklyBest20(addDays(date, -7)),
   ]);
   const w = wellness[0];
   const recent = activities.filter((a) => a.start_date_local >= addDays(date, -84));
@@ -73,10 +69,11 @@ export async function loadOutlook() {
     )[0];
   return {
     date,
-    ctl: w?.ctl ?? 0,
-    atl: w?.atl ?? 0,
+    // Undefined when intervals.icu didn't answer: shown as "no data", never projected from 0.
+    ctl: w?.ctl,
+    atl: w?.atl,
     rideCtl: rideCtl.get(date) ?? 0,
-    // Back-tested fallbacks if there's too little recent data: typical endurance training.
+    // Typical endurance values when there's under 5 h of recent riding or running.
     rideRate: loadPerHour(recent, "ride", 50),
     runRate: loadPerHour(recent, "run", 60),
     workouts: events.filter((e) => e.category === "WORKOUT"),
