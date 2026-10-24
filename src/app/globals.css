@@ -100,8 +100,7 @@ input:focus-visible {
   }
 }
 /* Status bar area keeps the sky's top colour while content scrolls under it. */
-.screen::before {
-  content: "";
+.statusbar {
   position: fixed;
   inset: 0 0 auto;
   height: env(safe-area-inset-top, 0px);
@@ -122,6 +121,7 @@ input:focus-visible {
 
 /* hero */
 .hero {
+  position: relative;
   text-align: center;
   padding: 44px 0 26px;
   display: grid;
@@ -146,6 +146,48 @@ input:focus-visible {
 .hero .hl {
   font-size: 17px;
   font-weight: 500;
+}
+.hero .hl span,
+.dim {
+  color: var(--fg-2);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.chip {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.chip.flag {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1a1020;
+}
+.compact {
+  position: fixed;
+  z-index: 25;
+  left: 0;
+  right: 0;
+  top: env(safe-area-inset-top, 0px);
+  padding: 10px 16px 12px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-1) 70%, transparent);
+}
+.compact b {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+}
+.compact small {
+  font-size: 14px;
   color: var(--fg-2);
 }
 
@@ -195,6 +237,258 @@ input:focus-visible {
   font-size: 15px;
   line-height: 1.7;
   color: var(--fg-2);
+}
+
+.mod-sum {
+  margin: 8px 16px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+/* 7-day plan strip */
+.strip {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 6px 12px 14px;
+  gap: 2px;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 12px;
+}
+.strip::-webkit-scrollbar {
+  display: none;
+}
+/* Safari drops end padding in flex scrollers; a spacer keeps the last day off the edge. */
+.strip::after {
+  content: "";
+  flex: 0 0 10px;
+}
+.day {
+  flex: 0 0 58px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 15px;
+  font-weight: 500;
+  scroll-snap-align: start;
+}
+.day svg {
+  width: 24px;
+  height: 24px;
+}
+.day small {
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.day .load {
+  font-size: 17px;
+}
+.day.now {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+}
+
+/* workout */
+.wk h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.wk .meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--fg-2);
+}
+.wk .meta b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.profile {
+  width: 100%;
+  height: 64px;
+  display: block;
+  margin-top: 12px;
+}
+.note {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair);
+}
+.note .av {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0b2843;
+  background: var(--fg);
+}
+.note p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.42;
+  white-space: pre-line;
+}
+.note small {
+  display: block;
+  font-size: 12px;
+  color: var(--fg-3);
+  margin-bottom: 2px;
+}
+
+/* night list with range bars */
+.rows {
+  list-style: none;
+  margin: 0;
+  display: grid;
+  padding: 0 16px 6px;
+}
+.row {
+  display: grid;
+  grid-template-columns: 50px 62px 26px minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 0;
+  border-top: 1px solid var(--hair);
+  font-size: 16px;
+  font-weight: 500;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.row:first-child {
+  border-top: 0;
+}
+.row .slp {
+  font-size: 13px;
+  color: var(--sleep);
+}
+.row .lo {
+  color: var(--fg-3);
+  text-align: right;
+}
+.row .hi {
+  text-align: right;
+}
+.track {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.track .band {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.24);
+}
+.track .seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+}
+.dot {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+.legend {
+  padding: 0 16px 14px;
+  font-size: 12px;
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+
+/* tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.tile {
+  min-height: 172px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tile .mod-b {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
+}
+.tile .v {
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.tile .v small {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg-2);
+  letter-spacing: 0;
+}
+.tile .w {
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.tile .say {
+  margin-top: auto;
+  font-size: 13px;
+  line-height: 1.32;
+}
+.gbar {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  margin: 10px 0 6px;
+}
+.mini {
+  width: 100%;
+  height: 40px;
+  display: block;
+  margin: 6px 0;
+}
+.steps {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0 6px;
+}
+.steps i {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.steps i.on {
+  background: var(--hrv);
 }
 
 /* login */

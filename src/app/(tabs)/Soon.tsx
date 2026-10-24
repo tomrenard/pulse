@@ -1,7 +1,9 @@
+import { Sky } from "./Sky";
+
 /** Hero plus a list of what the tab will show. Stands in until each tab gets its data. */
 export function Soon({ place, title, items }: { place: string; title: string; items: string[] }) {
   return (
-    <>
+    <Sky state="go">
       <section className="hero">
         <div className="place">{place}</div>
         <div className="big">{title}</div>
@@ -15,6 +17,6 @@ export function Soon({ place, title, items }: { place: string; title: string; it
           ))}
         </ul>
       </section>
-    </>
+    </Sky>
   );
 }

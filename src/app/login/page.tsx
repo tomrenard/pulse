@@ -42,6 +42,7 @@ export default async function LoginPage({
   return (
     <div className="screen">
       <div className="sky" aria-hidden="true" />
+      <div className="statusbar" aria-hidden="true" />
       <main className="app">
         <section className="hero">
           <div className="big">pulse</div>
