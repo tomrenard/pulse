@@ -1074,98 +1074,6 @@ ul.races {
   font-weight: 800;
   color: rgba(0, 0, 0, 0.75);
 }
-.potential-hero {
-  display: grid;
-  margin-bottom: 12px;
-}
-.potential-hero b {
-  font-family: var(--display);
-  font-size: 32px;
-  font-weight: 300;
-}
-.potential-hero span {
-  font-size: 13px;
-  color: var(--fg-2);
-}
-ul.ladder {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-.ladder li {
-  display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 62px;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-}
-.lad-track {
-  position: relative;
-  height: 14px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
-}
-.lad-band {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  border-radius: 5px;
-}
-.lad-band.now {
-  background: rgba(95, 224, 208, 0.45);
-}
-.lad-band.lad-pb {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 3px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: #fff;
-}
-.lad-coros {
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
-}
-.lad-v {
-  text-align: right;
-  font-weight: 600;
-}
-.lad-legend {
-  display: flex;
-  gap: 14px;
-  margin-top: 12px;
-  font-size: 11px;
-  color: var(--fg-3);
-}
-.lad-legend span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.lad-legend i {
-  position: static;
-  display: inline-block;
-  width: 14px;
-  height: 8px;
-  margin: 0;
-}
-.lad-legend .lad-pb {
-  width: 3px;
-  height: 12px;
-}
-.lad-legend .lad-coros {
-  width: 8px;
-  height: 8px;
-}
 .weekstrip {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -1382,32 +1290,69 @@ ul.ladder {
     transition: none !important;
   }
 }
-ul.tri {
+/* Outlook estimates: name left, time right (big) with its range (small) */
+ul.est,
+ul.est-legs {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.tri li {
+.est > li,
+.est summary {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+.est > li {
   padding: 8px 0;
 }
-.tri li + li {
+.est > li:has(details) {
+  display: block;
+}
+.est > li + li {
   border-top: 1px solid var(--hair);
 }
-.tri .what {
+.est summary {
+  list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.est summary::-webkit-details-marker {
+  display: none;
+}
+.est .what {
   display: grid;
 }
-.tri .what small {
+.est .what small,
+.est-v small,
+.est-legs small {
   font-size: 11px;
   color: var(--fg-3);
 }
-.tri .missing {
+.est-v {
+  display: grid;
+  text-align: right;
+}
+.est-v b {
+  font-size: 17px;
+  font-weight: 600;
+}
+.est .missing {
   font-size: 13px;
   color: var(--fg-2);
-  text-align: right;
+}
+.est-legs {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+}
+.est-legs li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
 }
 
 /* The plan: next days on Today */

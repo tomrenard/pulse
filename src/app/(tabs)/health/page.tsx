@@ -1,7 +1,8 @@
 import { addDays } from "@/lib/date";
-import { hmm } from "@/lib/format";
+import { hmm, signed } from "@/lib/format";
 import { loadHealth, TAGS } from "@/lib/health";
 import { MIN_NIGHTS, mean, midpointSpreadMin, SLEEP_NEED_SECS } from "@/lib/readiness";
+import { MIN_EVENTS, type recoveryResponse, SOLID_NIGHTS } from "@/lib/recovery";
 import { Bars, Line } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
@@ -15,6 +16,54 @@ const avg = (xs: (number | null | undefined)[]) => {
 };
 const STRESS_WORD = (v: number) =>
   v <= 25 ? "relaxed" : v <= 50 ? "low" : v <= 75 ? "medium" : "high";
+
+/** Your HRV after big days: learning ring until 5 big days, then the dip night by night. */
+function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
+  const ready = r.events >= MIN_EVENTS && r.nights !== undefined;
+  const nights = (n: number) => (n > r.profile.length ? `${r.profile.length}+` : String(n));
+  return (
+    <Module
+      title="Recovery response"
+      value={ready ? `≈ ${nights(r.nights as number)} nights` : `${r.events} of ${MIN_EVENTS}`}
+      info={
+        <p>
+          Big days are your top 10 % by training load ({r.bigLoad ? Math.round(r.bigLoad) : "–"}+),
+          with no other big day within 3 days either side. Each night after is compared with your
+          7-night HRV before; recovered means back within your normal spread. Learnt from {r.events}{" "}
+          big days and {r.hrvNights} nights of HRV; an early read until {SOLID_NIGHTS} nights.
+        </p>
+      }
+    >
+      <div className="mod-b">
+        {ready ? (
+          <>
+            <div className="stats num">
+              {r.profile.map((p, k) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
+                <span key={k}>
+                  <b>{signed(p, " %")}</b>
+                  night {k + 1}
+                </span>
+              ))}
+            </div>
+            <div className="caption">
+              HRV after a big day, against the week before
+              {r.hrvNights < SOLID_NIGHTS ? " · early read" : ""}
+            </div>
+          </>
+        ) : (
+          <div className="recovery">
+            <span
+              className="ring"
+              style={{ "--p": Math.min(1, r.events / MIN_EVENTS) } as React.CSSProperties}
+            />
+            <span className="caption">Learning how your HRV reacts to big days</span>
+          </div>
+        )}
+      </div>
+    </Module>
+  );
+}
 
 export default async function HealthPage() {
   const h = await loadHealth();
@@ -155,6 +204,8 @@ export default async function HealthPage() {
           />
         </div>
       </Module>
+
+      <Recovery r={h.recovery} />
 
       <HrvList date={h.date} nights={nights} normal={ready.normal} />
 

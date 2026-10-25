@@ -1,5 +1,3 @@
-import { linearFit } from "./readiness.ts";
-
 /**
  * Race-tab estimates. Each says where it comes from; none is shown when its data is too thin.
  * - Running VO2max: Daniels & Gilbert VDOT from a best effort (5 km to half marathon).
@@ -146,14 +144,16 @@ export function raceInfo(e: {
   const name = (e.name ?? "").toLowerCase();
   const type = (e.type ?? "").toLowerCase();
   const metres = e.distance ?? e.distance_target;
-  if (/\btri(athlon)?\b|ironman|70\.3/.test(name)) {
-    const label = /sprint/.test(name)
-      ? "Sprint triathlon"
-      : /half|70\.3/.test(name)
-        ? "Half distance"
-        : /ironman|full/.test(name)
-          ? "Full distance"
-          : "Olympic triathlon";
+  if (/\btri(athlon)?\b|ironman|70\.3|\bt100\b/.test(name)) {
+    const label = /\bt100\b/.test(name)
+      ? "T100"
+      : /sprint/.test(name)
+        ? "Sprint triathlon"
+        : /half|70\.3/.test(name)
+          ? "Half distance"
+          : /ironman|full/.test(name)
+            ? "Full distance"
+            : "Olympic triathlon";
     return { sport: "tri" as const, metres: undefined, label };
   }
   if (/ride|bike|cycl/.test(type) || (!type && /fondo|gravel|rad|tour/.test(name))) {
@@ -185,38 +185,52 @@ export function raceInfo(e: {
   return { sport: "other" as const, metres, label: e.type ?? "Race" };
 }
 
-/** Swim, bike and run distances (m) by triathlon label. */
-const OLYMPIC: [number, number, number] = [1500, 40000, 10000];
-const TRI_LEGS: Record<string, [number, number, number]> = {
-  "Sprint triathlon": [750, 20000, 5000],
-  "Olympic triathlon": OLYMPIC,
-  "Half distance": [1900, 90000, 21097.5],
-  "Full distance": [3800, 180000, 42195],
-};
-export const triLegs = (label: string) => TRI_LEGS[label] ?? OLYMPIC;
+/**
+ * Each triathlon: swim, bike and run distances (m), bike effort as a share of FTP and how much
+ * slower you run off the bike than fresh.
+ *   Bike: age-group intensity, Friel (Olympic 80–90 %, 70.3 70–80 %, Ironman 60–70 %); T100's
+ *         80 km in between.
+ *   Run fade: Tri-Alliance's race-pacing guide (sprint ~6 %, Olympic ~10 %, 70.3 ~18 %,
+ *         Ironman 30 %+), a coaching rule, not a study: hence the wide ranges.
+ */
+const TRI = {
+  "Sprint triathlon": { legs: [750, 20000, 5000], bike: [0.85, 0.95], fade: [1.03, 1.09] },
+  "Olympic triathlon": { legs: [1500, 40000, 10000], bike: [0.8, 0.9], fade: [1.06, 1.14] },
+  T100: { legs: [2000, 80000, 18000], bike: [0.72, 0.82], fade: [1.1, 1.2] },
+  "Half distance": { legs: [1900, 90000, 21097.5], bike: [0.7, 0.8], fade: [1.12, 1.24] },
+  "Full distance": { legs: [3800, 180000, 42195], bike: [0.6, 0.7], fade: [1.25, 1.4] },
+} as const satisfies Record<
+  string,
+  { legs: readonly number[]; bike: readonly number[]; fade: readonly number[] }
+>;
+export type TriLabel = keyof typeof TRI;
+const triOf = (label: string) => TRI[label as TriLabel] ?? TRI["Olympic triathlon"];
+export const triLegs = (label: string) => triOf(label).legs;
 
 type Leg = { low: number; high: number } | { problem: string };
 
 /**
- * A flat-course triathlon split, each leg as a range (s).
- *   Swim: CSS + 4 s/100 m (open water: wetsuit gains roughly offset sighting and the start),
- *         ±8 %. Without a usable CSS: "Needs pool data".
- *   Bike: steady-power physics on the flat at 80–88 % of FTP (Olympic) or 70–78 % (longer),
- *         race kit (CdA 0.28, Crr 0.004), weight + 9 kg.
- *   Run:  your race-day open time for the run distance (runSecs), 3–8 % slower off the bike (Bonacci 2011; Hausswirth 1997).
+ * A flat-course triathlon finish, each leg as a range (s).
+ *   Swim: your race pace per 100 m with its spread (CSS + 4 s, ±8 %; or recent training pace,
+ *         ±12 %). Without one: left out, and the total says "+ swim".
+ *   Bike: steady-power physics on the flat at the distance's share of FTP, race kit
+ *         (CdA 0.28, Crr 0.004), weight + 9 kg.
+ *   Run:  your fresh time for the run distance (runSecs) times the distance's run fade.
  *   T1 + T2: 3–6 min.
  * ponytail: flat course and no drafting; a GPX of the bike course would sharpen the bike leg.
  */
 export function triSplit(
   label: string,
-  x: { swimPer100?: number; ftp?: number; kg?: number; runSecs?: number },
+  x: { swim?: { per100: number; spread: number }; ftp?: number; kg?: number; runSecs?: number },
 ) {
-  const distances = triLegs(label);
-  const [swimM, bikeM, runM] = distances;
-  const swim: Leg = x.swimPer100
-    ? ((s) => ({ low: s * 0.92, high: s * 1.08 }))(((x.swimPer100 + 4) * swimM) / 100)
-    : { problem: "Needs pool data" };
-  const [lo, hi] = bikeM > 40000 ? [0.7, 0.78] : [0.8, 0.88];
+  const t = triOf(label);
+  const [swimM, bikeM] = t.legs;
+  const swim: Leg = x.swim
+    ? ((s, k) => ({ low: s * (1 - k), high: s * (1 + k) }))(
+        (x.swim.per100 * swimM) / 100,
+        x.swim.spread,
+      )
+    : { problem: "No usable swim data" };
   const ride = (frac: number) =>
     rideTime([{ metres: bikeM, grade: 0 }], {
       watts: (x.ftp as number) * frac,
@@ -224,17 +238,36 @@ export function triSplit(
       cda: 0.28,
       crr: 0.004,
     }).secs;
-  const bike: Leg = x.ftp ? { low: ride(hi), high: ride(lo) } : { problem: "Needs an FTP" };
+  const bike: Leg = x.ftp
+    ? { low: ride(t.bike[1]), high: ride(t.bike[0]) }
+    : { problem: "Needs an FTP" };
   const run: Leg = x.runSecs
-    ? { low: x.runSecs * 1.03, high: x.runSecs * 1.08 }
+    ? { low: x.runSecs * t.fade[0], high: x.runSecs * t.fade[1] }
     : { problem: "Needs recent runs with heart rate" };
   const transitions = { low: 180, high: 360 };
-  const legs = [swim, bike, run, transitions];
-  const total = legs.every((l) => "low" in l)
+  // Without a swim the total is bike + run + transitions, shown as "+ swim".
+  const counted = "low" in swim ? [swim, bike, run, transitions] : [bike, run, transitions];
+  const total = counted.every((l) => "low" in l)
     ? {
-        low: legs.reduce((s, l) => s + (l as { low: number }).low, 0),
-        high: legs.reduce((s, l) => s + (l as { high: number }).high, 0),
+        low: counted.reduce((s, l) => s + (l as { low: number }).low, 0),
+        high: counted.reduce((s, l) => s + (l as { high: number }).high, 0),
+        swim: "low" in swim,
       }
     : undefined;
-  return { distances, swim, bike, run, transitions, total };
+  return { distances: t.legs, swim, bike, run, transitions, total };
+}
+
+/**
+ * Your race pace for a triathlon swim (s/100 m): CSS + 4 s when the pool bests are real, else
+ * your recent training pace (rougher, and only as good as the pool length on those swims).
+ */
+export function swimPace(
+  css: ReturnType<typeof swimCss>,
+  recent: { metres: number; secs: number },
+): { per100: number; spread: number } | undefined {
+  if ("per100" in css) return { per100: css.per100 + 4, spread: 0.08 };
+  if (recent.metres < 1500) return undefined;
+  const per100 = recent.secs / (recent.metres / 100);
+  // Faster than ~1:10/100 m over training is a world-class pace: the distance is wrong.
+  return per100 >= 70 && per100 <= 240 ? { per100, spread: 0.12 } : undefined;
 }

@@ -7,6 +7,7 @@ import {
   rideTime,
   stretches,
   swimCss,
+  swimPace,
   triSplit,
   vdot,
 } from "./races.ts";
@@ -114,23 +115,55 @@ test("race info from names when intervals.icu has no distance", () => {
     metres: 50000,
     label: "50 km",
   });
+  expect(raceInfo({ name: "T100 Lake Las Vegas" })).toMatchObject({ sport: "tri", label: "T100" });
   expect(raceInfo({ name: "Marathon relay", type: "Run" })).toMatchObject({
     sport: "run",
     metres: undefined,
   });
 });
 
-test("Olympic tri split: legs in sane ranges, swim says what's missing", () => {
-  const t = triSplit("Olympic triathlon", { swimPer100: 100, ftp: 250, kg: 70, runSecs: 2400 });
+test("Olympic tri split: legs in sane ranges", () => {
+  const t = triSplit("Olympic triathlon", {
+    swim: { per100: 104, spread: 0.08 },
+    ftp: 250,
+    kg: 70,
+    runSecs: 2400,
+  });
   expect(t.distances).toEqual([1500, 40000, 10000]);
   const leg = (l: typeof t.swim) => ("low" in l ? l : { low: 0, high: 0 });
   expect(leg(t.swim).low).toBeCloseTo(1560 * 0.92);
-  // ~210 W on the flat in race kit: 37–40 km/h.
+  // 200–225 W on the flat in race kit: 36–40 km/h.
   expect(40000 / leg(t.bike).low).toBeGreaterThan(10);
   expect(40000 / leg(t.bike).high).toBeGreaterThan(9.5);
-  expect(leg(t.run).low).toBeCloseTo(2472);
+  expect(leg(t.run).low).toBeCloseTo(2400 * 1.06);
+  expect(t.total).toMatchObject({ swim: true });
   expect(t.total?.low).toBeLessThan(t.total?.high ?? 0);
-  const noPool = triSplit("Olympic triathlon", { ftp: 250 });
-  expect(noPool.swim).toEqual({ problem: "Needs pool data" });
-  expect(noPool.total).toBeUndefined();
+});
+
+test("tri without swim data: total of the rest, marked", () => {
+  const t = triSplit("Olympic triathlon", { ftp: 250, runSecs: 2400 });
+  expect(t.swim).toHaveProperty("problem");
+  expect(t.total).toMatchObject({ swim: false });
+  expect(triSplit("Olympic triathlon", { runSecs: 2400 }).total).toBeUndefined(); // no FTP
+});
+
+test("longer tri: easier bike, bigger run fade", () => {
+  const x = { ftp: 250, kg: 70, runSecs: 3 * 3600 };
+  const full = triSplit("Full distance", x);
+  const half = triSplit("Half distance", x);
+  const low = (l: typeof full.run) => ("low" in l ? l.low : 0);
+  expect(low(full.run)).toBeCloseTo(3 * 3600 * 1.25);
+  expect(low(full.run) / (3 * 3600)).toBeGreaterThan(low(half.run) / (3 * 3600));
+  // Ironman bike at 60–70 % FTP: 180 km in roughly 5–6 h on the flat.
+  expect(low(full.bike)).toBeGreaterThan(5 * 3600);
+  expect(low(full.bike)).toBeLessThan(6.5 * 3600);
+  expect(triSplit("T100", x).distances).toEqual([2000, 80000, 18000]);
+});
+
+test("swim pace: CSS first, then recent training pace, never an impossible one", () => {
+  const recent = { metres: 6000, secs: 6000 * 1.1 }; // 1:50/100 m
+  expect(swimPace({ per100: 100 }, recent)).toEqual({ per100: 104, spread: 0.08 });
+  expect(swimPace({ problem: "x" }, recent)?.per100).toBeCloseTo(110);
+  expect(swimPace({ problem: "x" }, { metres: 6000, secs: 3000 })).toBeUndefined(); // 0:50/100 m
+  expect(swimPace({ problem: "x" }, { metres: 1000, secs: 1100 })).toBeUndefined(); // too little
 });

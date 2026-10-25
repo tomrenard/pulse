@@ -19,6 +19,19 @@ const AFTER = 4;
 
 type DayLoad = { date: string; load: number };
 
+/** Training load per training day since `from`. */
+export function dailyLoads(
+  activities: { start_date_local: string; icu_training_load?: number }[],
+  from: string,
+): DayLoad[] {
+  const byDay = new Map<string, number>();
+  for (const a of activities) {
+    const d = a.start_date_local.slice(0, 10);
+    if (d >= from) byDay.set(d, (byDay.get(d) ?? 0) + (a.icu_training_load ?? 0));
+  }
+  return [...byDay].map(([date, load]) => ({ date, load }));
+}
+
 export function recoveryResponse(loads: DayLoad[], nights: NightInput[]) {
   const ln = new Map(
     nights.filter((n) => n.hrv && !n.tagged).map((n) => [n.date, Math.log(n.hrv as number)]),

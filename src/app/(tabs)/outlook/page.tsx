@@ -1,77 +1,46 @@
 import { addDays, daysBetween, shortDate } from "@/lib/date";
-import { hmm, signed } from "@/lib/format";
-import { formPct, formTarget, powerAt, projectFitness } from "@/lib/outlook";
+import { clock, hmm } from "@/lib/format";
+import { formPct, formTarget, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
-import { raceDayVdot, timeAt } from "@/lib/potential";
-import { swimCss, triLegs, triSplit } from "@/lib/races";
-import { loadCoros, loadSwim } from "@/lib/races-load";
-import { MIN_EVENTS, type recoveryResponse, SOLID_NIGHTS } from "@/lib/recovery";
+import { freshTime } from "@/lib/potential";
+import { swimCss, swimPace, triLegs, triSplit } from "@/lib/races";
+import { loadSwim } from "@/lib/races-load";
 import { SPORT_COLOR, sportOf } from "@/lib/volume";
-import { Scatter } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
-import { Potential } from "./Potential";
 import { Tri } from "./Tri";
-import { WhatIf } from "./WhatIf";
 
 const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
 const SPORT_TINT = { ...SPORT_COLOR, tri: SPORT_COLOR.swim };
 
-/** Your HRV after big days: learning ring until 5 big days, then the dip night by night. */
-function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
-  const ready = r.events >= MIN_EVENTS && r.nights !== undefined;
-  const nights = (n: number) => (n > r.profile.length ? `${r.profile.length}+` : String(n));
-  return (
-    <Module
-      title="Recovery response"
-      value={ready ? `≈ ${nights(r.nights as number)} nights` : `${r.events} of ${MIN_EVENTS}`}
-      info={
-        <p>
-          Big days are your top 10 % by training load ({r.bigLoad ? Math.round(r.bigLoad) : "–"}+),
-          with no other big day within 3 days either side. Each night after is compared with your
-          7-night HRV before; recovered means back within your normal spread. Learnt from {r.events}{" "}
-          big days and {r.hrvNights} nights of HRV; an early read until {SOLID_NIGHTS} nights.
-        </p>
-      }
-    >
-      <div className="mod-b">
-        {ready ? (
-          <>
-            <div className="stats num">
-              {r.profile.map((p, k) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
-                <span key={k}>
-                  <b>{signed(p, " %")}</b>
-                  night {k + 1}
-                </span>
-              ))}
-            </div>
-            <div className="caption">
-              HRV after a big day, against the week before
-              {r.hrvNights < SOLID_NIGHTS ? " · early read" : ""}
-            </div>
-          </>
-        ) : (
-          <div className="recovery">
-            <span
-              className="ring"
-              style={{ "--p": Math.min(1, r.events / MIN_EVENTS) } as React.CSSProperties}
-            />
-            <span className="caption">Learning how your HRV reacts to big days</span>
-          </div>
-        )}
-      </div>
-    </Module>
-  );
-}
+const RUNS = [
+  [5000, "5 km"],
+  [10000, "10 km"],
+  [21097.5, "Half marathon"],
+  [42195, "Marathon"],
+] as const;
+const TRIS = [
+  ["Olympic triathlon", "Olympic"],
+  ["T100", "T100"],
+  ["Half distance", "70.3"],
+  ["Full distance", "Ironman"],
+] as const;
+/** Running times are shown ±5 %: "now" comes from easy-run heart rate, not a race. */
+const RUN_SPREAD = 0.05;
 
 export default async function OutlookPage() {
-  const [o, coros, pool] = await Promise.all([loadOutlook(), loadCoros(), loadSwim()]);
+  const [o, pool] = await Promise.all([loadOutlook(), loadSwim()]);
   const next = o.races[0];
-  const runRace = o.races.find((r) => r.info.sport === "run" && r.info.metres);
   const known = o.ctl !== undefined && o.atl !== undefined;
-
+  const v = o.potential.now;
+  const run = (metres: number) => (v ? freshTime(v, metres, o.potential.volume) : undefined);
+  const css = swimCss(pool.swim200, pool.swim400);
+  const swim = swimPace(css, o.recentSwim);
+  const tris = TRIS.map(([label, name]) => ({
+    name,
+    split: triSplit(label, { swim, ftp: o.ftp, kg: o.kg, runSecs: run(triLegs(label)[2]) }),
+  }));
   // Planned hours per week for the next 8 weeks, by sport.
   const weeks = Array.from({ length: 8 }, (_, i) => {
     const from = addDays(o.date, i * 7 + 1);
@@ -111,24 +80,6 @@ export default async function OutlookPage() {
       : [];
   const raceDay = plan.find((d) => d.date === raceDate);
   const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
-  // Next triathlon: legs from swim CSS, eFTP and race-day running potential at today's volume.
-  const tri = o.races.find((r) => r.info.sport === "tri");
-  const css = swimCss(pool.swim200, pool.swim400);
-  const triSplitNow =
-    tri &&
-    (() => {
-      const weeks = daysBetween(o.date, tri.start_date_local.slice(0, 10)) / 7;
-      const { now, anchor, weeklyKm } = o.potential;
-      const v = now && anchor ? raceDayVdot(now, weeklyKm, anchor, weeks) : now;
-      const runM = triLegs(tri.info.label)[2];
-      return triSplit(tri.info.label, {
-        swimPer100: "per100" in css ? css.per100 : undefined,
-        ftp: o.ftp,
-        kg: o.kg,
-        runSecs: v ? timeAt(v, runM) : undefined,
-      });
-    })();
-  const corosTimes = coros ? [coros.k5, coros.k10, coros.half, coros.marathon] : undefined;
 
   return (
     <Sky state="go">
@@ -169,50 +120,103 @@ export default async function OutlookPage() {
       )}
 
       <Module
-        title="Running potential"
-        value={o.potential.now ? `VDOT ${o.potential.now.toFixed(1)}` : undefined}
+        title="Engine"
         info={
           <>
             <p>
-              Now: your fitness from heart rate against pace on recent runs (Runalyze's method),
-              scaled so your fittest stretch matches your best performances (VDOT{" "}
-              {o.potential.pbVdot?.toFixed(1) ?? "–"}). Easy runs say less than a hard effort, so
-              it's shown ±5 %.
+              Run VO₂max: your VDOT now, from heart rate against pace on runs in the last 30 days,
+              scaled so your fittest stretch matches your best race efforts (Runalyze's method).
             </p>
             <p>
-              Race day: what the weekly distance you choose supports (Tanda 2011, from weekly km and
-              training pace, about 5 min error on a marathon), reached over the weeks left with a
-              ~10-week time constant. That last part is a heuristic: no validated retraining curve
-              exists. Shown ±6 %.
-            </p>
-            <p>
-              White ticks: your all-time bests. Grey dots: COROS's own prediction. Your recent
-              running: {o.potential.weeklyKm.toFixed(1)} km/week.
+              Ride VO₂max: from your best 5-min power in the last 6 weeks (Hawley &amp; Noakes
+              1992). FTP: intervals.icu's eFTP from your recent rides.
             </p>
           </>
         }
       >
         <div className="mod-b">
-          <Potential
-            now={o.potential.now}
-            pbTimes={o.potential.pbTimes}
-            coros={corosTimes}
-            anchor={o.potential.anchor}
-            weeklyKm={o.potential.weeklyKm}
-            weeks={runRace ? daysBetween(o.date, runRace.start_date_local.slice(0, 10)) / 7 : 12}
-            race={runRace?.info}
-          />
+          <div className="stats num">
+            <span>
+              <b>{v ? Math.round(v) : "–"}</b>
+              Run VO₂max
+            </span>
+            <span>
+              <b>{o.rideVo2 ? Math.round(o.rideVo2) : "–"}</b>
+              Ride VO₂max
+            </span>
+            <span>
+              <b>{o.ftp ? `${Math.round(o.ftp)} W` : "–"}</b>
+              FTP{o.ftp && o.kg ? ` · ${(o.ftp / o.kg).toFixed(1)} W/kg` : ""}
+            </span>
+          </div>
         </div>
       </Module>
 
-      {tri && triSplitNow && (
-        <Tri
-          name={tri.name ?? ""}
-          label={tri.info.label}
-          split={triSplitNow}
-          swimNote={"problem" in css ? css.problem : undefined}
-        />
-      )}
+      <Module
+        title="Running"
+        info={
+          <p>
+            What you could run fresh today, from your run VO₂max (Daniels' tables), ±5 %. The
+            marathon also needs volume: it's the slower of that and what your last 8 weeks (
+            {o.potential.volume.weeklyKm.toFixed(0)} km/week) support (Tanda 2011), since VO₂max
+            alone predicts marathons too fast for most runners (Vickers &amp; Vertosick 2016).
+          </p>
+        }
+      >
+        <div className="mod-b">
+          {v ? (
+            <ul className="est">
+              {RUNS.map(([metres, name]) => {
+                const t = run(metres) as number;
+                return (
+                  <li key={name}>
+                    <span className="what">
+                      <b>{name}</b>
+                    </span>
+                    <span className="est-v num">
+                      <b>{clock(t)}</b>
+                      <small>
+                        {clock(t * (1 - RUN_SPREAD))}–{clock(t * (1 + RUN_SPREAD))}
+                      </small>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="caption">Needs a few runs with heart rate in the last 30 days.</p>
+          )}
+        </div>
+      </Module>
+
+      <Module
+        title="Triathlon"
+        info={
+          <>
+            <p>Flat course, no drafting. Tap a race for its legs.</p>
+            <p>
+              Swim:{" "}
+              {"per100" in css
+                ? "your critical swim speed from your best 200 m and 400 m, +4 s per 100 m for open water, ±8 %."
+                : swim
+                  ? "your average pace over your swims in the last 8 weeks, ±12 %. Rough: your pool bests look wrong (pool length?); a 400 m and a 200 m test would sharpen it."
+                  : "no usable swim data in the last 8 weeks, so totals are without the swim."}
+            </p>
+            <p>
+              Bike: physics at a share of your FTP that drops with distance (Friel's age-group
+              guide: Olympic 80–90 %, 70.3 70–80 %, Ironman 60–70 %).
+            </p>
+            <p>
+              Run: your fresh time for the distance, slower off the bike (about 10 % after an
+              Olympic, 18 % after a 70.3, 30 % after an Ironman). Transitions 3–6 min.
+            </p>
+          </>
+        }
+      >
+        <div className="mod-b">
+          <Tri races={tris} />
+        </div>
+      </Module>
 
       <Module title="Next 8 weeks" value={planned ? undefined : "nothing planned"}>
         {planned ? (
@@ -243,66 +247,6 @@ export default async function OutlookPage() {
           </div>
         ) : null}
       </Module>
-
-      {known && (
-        <Module
-          title="What if"
-          info={
-            <>
-              <p>
-                A scenario, not a forecast: fitness and form if you train exactly this, from today's
-                numbers.
-              </p>
-              <p>
-                It uses {o.rideRate.typical ? "a typical" : "your recent"}{" "}
-                {Math.round(o.rideRate.rate)} load/h riding and{" "}
-                {o.runRate.typical ? "a typical" : "your recent"} {Math.round(o.runRate.rate)}{" "}
-                load/h running. The 20-min range is what you typically rode at that ride fitness (8
-                of 10 weeks inside it), not a test result.
-              </p>
-            </>
-          }
-        >
-          <div className="mod-b">
-            <WhatIf
-              date={o.date}
-              ctl={o.ctl as number}
-              atl={o.atl as number}
-              rideCtl={o.rideCtl}
-              ride={o.rideRate}
-              run={o.runRate}
-              fit={o.power}
-              race={raceDate ? { date: raceDate, target } : undefined}
-            />
-          </div>
-        </Module>
-      )}
-
-      {o.power && (
-        <Module
-          title="20-min power vs fitness"
-          value={`${Math.round(o.recentBest20)} W now`}
-          info={
-            <p>
-              Each dot is a week since 2025: your best 20-min power over the 6 weeks before it
-              against your ride fitness. Line: +{o.power.b.toFixed(1)} W per point of fitness, ±
-              {Math.round(o.power.p80 * 100)} % for 8 of 10 weeks. White: today (
-              {Math.round(powerAt(o.power, o.rideCtl))} W typical at fitness {Math.round(o.rideCtl)}
-              ). Training bests, not tests; not your FTP.
-            </p>
-          }
-        >
-          <div className="mod-b">
-            <Scatter
-              points={o.power.points}
-              line={o.power}
-              today={{ ctl: o.rideCtl, power: o.recentBest20 }}
-            />
-          </div>
-        </Module>
-      )}
-
-      <Recovery r={o.recovery} />
     </Sky>
   );
 }

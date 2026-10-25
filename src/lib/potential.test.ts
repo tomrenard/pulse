@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import {
   calibrate,
+  freshTime,
   hrVo2,
   hrVo2Series,
-  raceDayVdot,
   tandaMarathon,
   timeAt,
   volumeBefore,
@@ -55,16 +55,12 @@ test("series needs 5 runs in 30 days; calibration maps the fittest stretch to th
   expect(odd[0]?.vdot).toBeCloseTo(57);
 });
 
-test("race day: back to PB level at PB-era volume, less with less, never below now by default", () => {
-  const anchor = { vdot: 57, weeklyKm: 50, pace: 300 };
-  expect(raceDayVdot(47, 50, anchor, 1000)).toBeCloseTo(57); // long enough at the old volume: PB level
-  expect(raceDayVdot(47, 100, anchor, 1000)).toBeCloseTo(57); // more volume: capped at the PB
-  const less = raceDayVdot(47, 25, anchor, 1000);
-  expect(less).toBeLessThan(57);
-  expect(less).toBeGreaterThan(47); // half the volume still beats a 47 now
-  const r = raceDayVdot(47, 50, anchor, 25);
-  expect(r).toBeGreaterThan(47);
-  expect(r).toBeLessThan(57);
+test("fresh time: VDOT up to the half, marathon no faster than volume allows", () => {
+  const volume = { weeklyKm: 20, pace: 330 };
+  expect(freshTime(50, 10000, volume)).toBeCloseTo(timeAt(50, 10000));
+  // VDOT 50 says ~3:10 for the marathon; 20 km/week at 5:30 says ~3:50.
+  expect(freshTime(50, 42195, volume)).toBeCloseTo(tandaMarathon(20, 330));
+  expect(freshTime(50, 42195, { weeklyKm: 120, pace: 240 })).toBeCloseTo(timeAt(50, 42195));
 });
 
 test("volume before a date", () => {

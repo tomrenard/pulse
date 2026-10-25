@@ -4,9 +4,9 @@
  *   LegacyEffectiveVO2max): %VO2max = e^((HR/HRmax − 1.00466) / 0.68725), speed at 100 % =
  *   speed / %VO2max, then Daniels' oxygen cost. 30-day average, scaled so your fittest stretch
  *   matches your best performance from the same years (the correction Runalyze takes from a race).
- * - "Race day": Tanda 2011 marathon pace from weekly km and training pace (SE ~4–5 min), turned
- *   into a VDOT; you move from Now towards it with a ~10-week time constant (heuristic, labelled).
- * - Times from a VDOT: Daniels & Gilbert, solved for time.
+ * - Times from a VDOT: Daniels & Gilbert, solved for time. Good up to the half; for the marathon
+ *   it is too fast for most recreational runners (Vickers & Vertosick 2016), so the marathon is
+ *   the slower of VDOT and Tanda 2011 (weekly km and training pace, SE ~4–5 min).
  */
 import { addDays } from "./date.ts";
 import { vdot } from "./races.ts";
@@ -78,24 +78,11 @@ export function timeAt(v: number, metres: number) {
 export const tandaMarathon = (weeklyKm: number, paceSecPerKm: number) =>
   (17.1 + 140 * Math.exp(-0.0053 * weeklyKm) + 0.55 * paceSecPerKm) * 42.195;
 
-export type Anchor = { vdot: number; weeklyKm: number; pace: number };
-
-/**
- * VDOT on race day after `weeks` of `weeklyKm`. The ceiling is anchored to you: your best VDOT,
- * scaled by how much that volume supports compared with what you ran when you were fittest
- * (Tanda's volume effect at your training pace back then). Raw Tanda alone is a marathon formula
- * and would make low volume look like lost 10 km speed. You move from now towards the ceiling with a
- * ~10-week time constant: a heuristic, no validated retraining curve exists.
- */
-export function raceDayVdot(now: number, weeklyKm: number, anchor: Anchor, weeks: number) {
-  const support = (km: number) => vdot(42195, tandaMarathon(km, anchor.pace));
-  // Capped at your best: more volume than back then is no promise of beating it.
-  const ceiling = Math.min(
-    anchor.vdot,
-    anchor.vdot * (support(weeklyKm) / support(anchor.weeklyKm)),
-  );
-  return ceiling - (ceiling - now) * Math.exp(-weeks / 10);
-}
+/** Fresh race time (s) for `metres` at VDOT `v`; marathons also limited by your running volume. */
+export const freshTime = (v: number, metres: number, volume: { weeklyKm: number; pace: number }) =>
+  metres >= 42000
+    ? Math.max(timeAt(v, metres), tandaMarathon(volume.weeklyKm, volume.pace))
+    : timeAt(v, metres);
 
 /** Weekly km and pace over the 8 weeks before `date`. */
 export function volumeBefore(runs: Run[], date: string) {
