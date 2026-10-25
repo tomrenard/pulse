@@ -5,7 +5,7 @@ import { loadOutlook } from "@/lib/outlook-load";
 import { freshTime } from "@/lib/potential";
 import { swimCss, swimPace, triLegs, triSplit } from "@/lib/races";
 import { loadSwim } from "@/lib/races-load";
-import { SPORT_COLOR, sportOf } from "@/lib/volume";
+import { mondayOf, SPORT_COLOR, SPORTS, type Sport, sportOf } from "@/lib/volume";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
@@ -41,22 +41,6 @@ export default async function OutlookPage() {
     name,
     split: triSplit(label, { swim, ftp: o.ftp, kg: o.kg, runSecs: run(triLegs(label)[2]) }),
   }));
-  // Planned hours per week for the next 8 weeks, by sport.
-  const weeks = Array.from({ length: 8 }, (_, i) => {
-    const from = addDays(o.date, i * 7 + 1);
-    const to = addDays(from, 6);
-    const ws = o.workouts.filter((w) => {
-      const d = w.start_date_local.slice(0, 10);
-      return d >= from && d <= to;
-    });
-    return {
-      from,
-      hours: ws.map((w) => ({ id: w.id, sport: sportOf(w.type), h: (w.moving_time ?? 0) / 3600 })),
-    };
-  });
-  const planned = weeks.some((w) => w.hours.length);
-  const maxH = Math.max(1, ...weeks.map((w) => w.hours.reduce((s, h) => s + h.h, 0)));
-
   // Race-day form from the plan, for the next race, when there is a plan.
   const raceDate = next?.start_date_local.slice(0, 10);
   const horizon = raceDate ? daysBetween(o.date, raceDate) : 0;
@@ -80,6 +64,29 @@ export default async function OutlookPage() {
       : [];
   const raceDay = plan.find((d) => d.date === raceDate);
   const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
+  const raceForm = raceDay && Math.round(formPct(raceDay));
+
+  // The plan by calendar week (Mon to Sun), this week first: planned hours per sport.
+  const thisMonday = mondayOf(o.date);
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const from = addDays(thisMonday, i * 7);
+    const to = addDays(from, 6);
+    const hours = Object.fromEntries(SPORTS.map((sp) => [sp, 0])) as Record<Sport, number>;
+    for (const w of o.workouts) {
+      const d = w.start_date_local.slice(0, 10);
+      if (d >= from && d <= to) hours[sportOf(w.type)] += (w.moving_time ?? 0) / 3600;
+    }
+    const total = SPORTS.reduce((sum, sp) => sum + hours[sp], 0);
+    return {
+      from,
+      hours,
+      total,
+      race: raceDate !== undefined && raceDate >= from && raceDate <= to,
+    };
+  });
+  const planTotal = weeks.reduce((sum, w) => sum + w.total, 0);
+  const maxH = Math.max(1, ...weeks.map((w) => w.total));
+  const bySport = SPORTS.map((sp) => [sp, weeks.reduce((sum, w) => sum + w.hours[sp], 0)] as const);
 
   return (
     <Sky state="go">
@@ -221,30 +228,65 @@ export default async function OutlookPage() {
         </div>
       </Module>
 
-      <Module title="Next 8 weeks" value={planned ? undefined : "nothing planned"}>
-        {planned ? (
+      <Module
+        title="Your plan"
+        value={planTotal ? `${hmm(planTotal * 3600)} in 8 weeks` : "nothing planned"}
+        info={
+          <>
+            <p>
+              The workouts in your intervals.icu calendar (Wattson's plan, or ones you add), in
+              hours per week from Monday, coloured by sport. This week counts only what's still to
+              come.
+            </p>
+            <p>
+              Race-day form: where your form lands on race day if you do exactly this plan. Shown
+              only when the plan reaches race week and every workout has a training load.
+            </p>
+          </>
+        }
+      >
+        {planTotal ? (
           <div className="mod-b">
             <div className="weekstrip" role="img" aria-label="Planned hours per week by sport">
-              {weeks.map((w) => (
-                <div key={w.from} className="wk-col">
+              {weeks.map((w, i) => (
+                <div key={w.from} className={`wk-col${w.race ? " race" : ""}`}>
                   <div className="wk-bar">
-                    {w.hours.map((h) => (
-                      <i
-                        key={h.id}
-                        style={{
-                          height: `${(h.h / maxH) * 100}%`,
-                          background: SPORT_COLOR[h.sport],
-                        }}
-                      />
-                    ))}
+                    {SPORTS.map((sp) =>
+                      w.hours[sp] ? (
+                        <i
+                          key={sp}
+                          style={{
+                            height: `${(w.hours[sp] / maxH) * 100}%`,
+                            background: SPORT_COLOR[sp],
+                          }}
+                        />
+                      ) : null,
+                    )}
                   </div>
-                  <small className="num">{hmm(w.hours.reduce((s, h) => s + h.h, 0) * 3600)}</small>
+                  <b className="num">{w.total ? hmm(w.total * 3600) : "–"}</b>
+                  <small>{w.race ? "Race" : i === 0 ? "This wk" : shortDate(w.from)}</small>
                 </div>
               ))}
             </div>
-            {raceDay && target && (
+            <div className="wk-legend num">
+              {bySport.map(([sp, h]) =>
+                h ? (
+                  <span key={sp}>
+                    <i style={{ background: SPORT_COLOR[sp] }} />
+                    {sp[0]?.toUpperCase()}
+                    {sp.slice(1)} {hmm(h * 3600)}
+                  </span>
+                ) : null,
+              )}
+            </div>
+            {raceForm !== undefined && target && (
               <div className="caption">
-                Race-day form {Math.round(formPct(raceDay))}% · target {target.low}–{target.high}%
+                Race-day form {raceForm}% (aim {target.low} to {target.high}%):{" "}
+                {raceForm < target.low
+                  ? "too tired, ease off before the race"
+                  : raceForm > target.high
+                    ? "fresher than needed"
+                    : "on target"}
               </div>
             )}
           </div>
