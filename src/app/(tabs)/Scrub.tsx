@@ -33,8 +33,8 @@ export function Scrub({
       className="chart-plot fit-plot"
       onPointerDown={pick}
       onPointerMove={pick}
-      // On a phone the value stays after lifting the finger; a mouse leaving clears it.
-      onPointerLeave={(e) => e.pointerType === "mouse" && setAt(undefined)}
+      // Cleared when the mouse leaves or the finger lifts (touch fires leave after up).
+      onPointerLeave={() => setAt(undefined)}
     >
       {children}
       {at !== undefined && (

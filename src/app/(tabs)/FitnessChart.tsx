@@ -99,31 +99,36 @@ export function FitnessChart({
 
   return (
     <figure className="fit">
+      {/* Fixed grid: values changing width never reflow it, so the plot below stays put. */}
       <div className="fit-read num">
-        <span className="fit-date">{at === undefined ? endLabel : shortDate(sel.date)}</span>
+        <span className="fit-date">
+          {at === undefined ? endLabel : shortDate(sel.date)}
+          <span style={{ color: zone.color }}>{zone.name}</span>
+        </span>
         <span>
           <i style={{ background: "var(--form)" }} />
-          Fitness <b>{Math.round(sel.ctl)}</b>
+          Fitness
+          <b>{Math.round(sel.ctl)}</b>
         </span>
         <span>
           <i style={{ background: "var(--rhr)" }} />
-          Fatigue <b>{Math.round(sel.atl)}</b>
+          Fatigue
+          <b>{Math.round(sel.atl)}</b>
         </span>
         <span>
           <i style={{ background: zone.color }} />
-          Form{" "}
+          Form
           <b>
             {Math.round(sel.tsb)} · {Math.round(pct)}%
-          </b>{" "}
-          {zone.name}
+          </b>
         </span>
       </div>
       <div
         className="fit-plot"
         onPointerDown={pick}
         onPointerMove={pick}
-        // On a phone the value stays after lifting the finger; a mouse leaving resets it.
-        onPointerLeave={(e) => e.pointerType === "mouse" && setAt(undefined)}
+        // Back to the last day when the mouse leaves or the finger lifts (touch fires leave after up).
+        onPointerLeave={() => setAt(undefined)}
         role="img"
         aria-label={`Fitness ${Math.round(days[0]?.ctl ?? 0)} to ${Math.round(last.ctl)} over ${n} days, form ${formZone(formPct(last)).name.toLowerCase()} at the end`}
       >

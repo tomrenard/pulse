@@ -1486,11 +1486,12 @@ ul.plan-steps {
   margin: 4px 0 0;
 }
 .fit-read {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  font-size: 12.5px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
   color: var(--fg-2);
+  white-space: nowrap;
   margin-bottom: 10px;
 }
 .fit-read i {
@@ -1501,11 +1502,15 @@ ul.plan-steps {
   margin-right: 5px;
 }
 .fit-read b {
+  display: block;
   color: var(--fg);
+  font-size: 16px;
   font-weight: 600;
 }
 .fit-date {
-  width: 100%;
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
   font-weight: 600;
   color: var(--fg);
 }
