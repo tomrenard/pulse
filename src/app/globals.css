@@ -374,6 +374,25 @@ input:focus-visible {
   width: 100%;
   height: 90px;
 }
+.chart-plot {
+  position: relative;
+  margin-right: 34px;
+}
+.chart-plot + .axis {
+  margin-right: 34px;
+}
+.chart-grid {
+  stroke: var(--hair);
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+.chart-tick {
+  position: absolute;
+  right: -34px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--fg-3);
+}
 .chart-dot {
   position: absolute;
   right: -4px;
@@ -1529,7 +1548,7 @@ ul.plan-steps {
   transform: translateY(-50%);
   font-size: 9.5px;
   font-weight: 700;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  opacity: 0.55;
   pointer-events: none;
 }
 .fit-cursor {

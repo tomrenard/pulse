@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { shortDate } from "@/lib/date";
 import { type Day, FORM_ZONES, formPct, formZone } from "@/lib/outlook";
 
@@ -24,6 +24,7 @@ export function FitnessChart({
   endLabel?: string;
 }) {
   const [at, setAt] = useState<number>();
+  const gradId = useId();
   if (days.length < 2) return null;
   const n = days.length;
   const x = (i: number) => (i / (n - 1)) * 300;
@@ -128,6 +129,26 @@ export function FitnessChart({
         </div>
         <div className="fit-panel form">
           <svg viewBox="0 0 300 100" preserveAspectRatio="none" aria-hidden="true">
+            {/* Hard stops at the zone edges, so the form line takes its zone's colour. */}
+            <defs>
+              <linearGradient
+                id={gradId}
+                gradientUnits="userSpaceOnUse"
+                x1={0}
+                y1={0}
+                x2={0}
+                y2={100}
+              >
+                {bands.flatMap((b) => [
+                  <stop key={`${b.name}t`} offset={`${b.top}%`} style={{ stopColor: b.color }} />,
+                  <stop
+                    key={`${b.name}b`}
+                    offset={`${b.bottom}%`}
+                    style={{ stopColor: b.color }}
+                  />,
+                ])}
+              </linearGradient>
+            </defs>
             {bands.map((b) => (
               <rect
                 key={b.name}
@@ -143,9 +164,8 @@ export function FitnessChart({
             <path
               d={line((d) => fy(formPct(d)))}
               className="fit-line"
-              stroke="#fff"
-              strokeOpacity={0.85}
-              strokeWidth={1.2}
+              stroke={`url(#${gradId})`}
+              strokeWidth={1.5}
             />
           </svg>
           {bands.map((b) => (

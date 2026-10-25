@@ -98,6 +98,7 @@ export default async function HealthPage() {
             points={series(30, "asleepSecs")}
             color="var(--sleep)"
             target={SLEEP_NEED_SECS}
+            format={hmm}
             label="Sleep per night, last 30 nights"
           />
           {last?.deepPct != null && (

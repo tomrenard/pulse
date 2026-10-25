@@ -14,6 +14,20 @@ function scale(values: number[], pad: number) {
   return (v: number) => H - ((v - lo) / (hi - lo || 1)) * H;
 }
 
+/**
+ * Values in a gutter right of the plot, each with a faint line across, so you can read the
+ * chart's scale. Labels closer than a line height to one already shown are dropped.
+ */
+function Ticks({ ticks }: { ticks: { y: number; text: string }[] }) {
+  const shown: typeof ticks = [];
+  for (const t of ticks) if (shown.every((s) => Math.abs(s.y - t.y) >= 12)) shown.push(t);
+  return shown.map((t) => (
+    <span key={t.text} className="chart-tick num" style={{ top: `${t.y}px` }}>
+      {t.text}
+    </span>
+  ));
+}
+
 function Axis({ points }: { points: Point[] }) {
   return (
     <div className="axis">
@@ -43,34 +57,45 @@ export function Line({
     .map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`)
     .join("");
   const last = points.at(-1) as Point;
+  const values = points.map((p) => p.value);
+  const ticks = [Math.max(...values), Math.min(...values)].map((v) => ({
+    y: y(v),
+    text: `${Math.round(v)}`,
+  }));
   return (
     <figure className="chart">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`${label}: last ${Math.round(last.value)} ${unit}${band ? `, normal ${Math.round(band.low)}–${Math.round(band.high)}` : ""}`}
-      >
-        {band && (
-          <rect
-            x={0}
-            width={W}
-            y={y(band.high)}
-            height={y(band.low) - y(band.high)}
-            fill="#fff"
-            fillOpacity={0.1}
+      <div className="chart-plot">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={`${label}: last ${Math.round(last.value)} ${unit}${band ? `, normal ${Math.round(band.low)}–${Math.round(band.high)}` : ""}`}
+        >
+          {band && (
+            <rect
+              x={0}
+              width={W}
+              y={y(band.high)}
+              height={y(band.low) - y(band.high)}
+              fill="#fff"
+              fillOpacity={0.1}
+            />
+          )}
+          {ticks.map((t) => (
+            <line key={t.text} x1={0} x2={W} y1={t.y} y2={t.y} className="chart-grid" />
+          ))}
+          <path
+            d={d}
+            fill="none"
+            stroke={color}
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
           />
-        )}
-        <path
-          d={d}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          vectorEffect="non-scaling-stroke"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <span className="chart-dot" style={{ top: `${y(last.value)}px`, background: color }} />
+        </svg>
+        <span className="chart-dot" style={{ top: `${y(last.value)}px`, background: color }} />
+        <Ticks ticks={ticks} />
+      </div>
       <Axis points={points} />
     </figure>
   );
@@ -81,43 +106,56 @@ export function Bars({
   color,
   target,
   label,
+  format = (v) => `${Math.round(v)}`,
 }: {
   points: Point[];
   color: string;
   target?: number;
   label: string;
+  /** How a value reads in the gutter (sleep seconds as h:mm). */
+  format?: (v: number) => string;
 }) {
   if (points.length < 2) return <p className="dim">Not enough nights yet.</p>;
   const max = Math.max(...points.map((p) => p.value), (target ?? 0) * 1.15, 1);
   const y = (v: number) => H - (v / max) * H;
   const slot = W / points.length;
+  const top = Math.max(...points.map((p) => p.value));
+  // The target first, so it wins when the best bar sits right on it.
+  const ticks = [...(target !== undefined ? [target] : []), top].map((v) => ({
+    y: y(v),
+    text: format(v),
+  }));
   return (
     <figure className="chart">
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
-        {points.map((p, i) => (
-          <rect
-            key={p.date}
-            x={i * slot + slot * 0.15}
-            width={slot * 0.7}
-            y={y(p.value)}
-            height={H - y(p.value)}
-            rx={Math.min(3, slot * 0.3)}
-            fill={color}
-            fillOpacity={i === points.length - 1 ? 1 : 0.7}
-          />
-        ))}
-        {target !== undefined && (
-          <line
-            x1={0}
-            x2={W}
-            y1={y(target)}
-            y2={y(target)}
-            stroke="rgba(255,255,255,.6)"
-            strokeDasharray="3 3"
-            vectorEffect="non-scaling-stroke"
-          />
-        )}
-      </svg>
+      <div className="chart-plot">
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
+          <line x1={0} x2={W} y1={y(top)} y2={y(top)} className="chart-grid" />
+          {points.map((p, i) => (
+            <rect
+              key={p.date}
+              x={i * slot + slot * 0.15}
+              width={slot * 0.7}
+              y={y(p.value)}
+              height={H - y(p.value)}
+              rx={Math.min(3, slot * 0.3)}
+              fill={color}
+              fillOpacity={i === points.length - 1 ? 1 : 0.7}
+            />
+          ))}
+          {target !== undefined && (
+            <line
+              x1={0}
+              x2={W}
+              y1={y(target)}
+              y2={y(target)}
+              stroke="rgba(255,255,255,.6)"
+              strokeDasharray="3 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+        <Ticks ticks={ticks} />
+      </div>
       <Axis points={points} />
     </figure>
   );
