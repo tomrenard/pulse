@@ -1291,8 +1291,7 @@ ul.races {
   }
 }
 /* Outlook estimates: name left, time right (big) with its range (small) */
-ul.est,
-ul.est-legs {
+ul.est {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1321,6 +1320,19 @@ ul.est-legs {
 .est summary::-webkit-details-marker {
   display: none;
 }
+/* A chevron after the time says the row opens; it turns down when open. */
+.est summary::after {
+  content: "›";
+  color: var(--fg-3);
+  font-size: 18px;
+  transition: transform 0.2s;
+}
+.est details[open] summary::after {
+  transform: rotate(90deg);
+}
+.est-v {
+  margin-left: auto;
+}
 .est .what {
   display: grid;
 }
@@ -1343,7 +1355,8 @@ ul.est-legs {
   color: var(--fg-2);
 }
 .est-legs {
-  margin-top: 8px;
+  list-style: none;
+  margin: 8px 0 0;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);

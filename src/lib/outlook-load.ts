@@ -50,7 +50,7 @@ export async function loadOutlook() {
     // Bests from the same years as the heart-rate data: an older PB would inflate "now".
     orNothing(
       intervals<{ list: PaceCurve[] }>(
-        `/pace-curves.json?type=Run&curves=all,r.${LOADS_FROM}.${date}`,
+        `/pace-curves.json?type=Run&curves=r.${LOADS_FROM}.${date}`,
         HOUR,
       ),
       { list: [] },
@@ -77,8 +77,7 @@ export async function loadOutlook() {
   // Road runs only: trail and treadmill pace says little about fitness.
   const runs = activities.filter((a) => a.type === "Run");
   const hrMax = athlete.sportSettings?.find((x) => x.types?.includes("Run"))?.max_hr ?? 0;
-  const [all, era] = pace.list;
-  const pbTimes = RUN_DISTANCES.map(([d]) => at(all?.distance, all?.values, d));
+  const era = pace.list[0];
   const eraTimes = RUN_DISTANCES.map(([d]) => at(era?.distance, era?.values, d));
   const pbVdot = bestVdot(RUN_DISTANCES.map(([d], i) => ({ distance: d, secs: eraTimes[i] })));
   const series = hrMax && pbVdot ? calibrate(hrVo2Series(runs, hrMax), pbVdot) : [];
@@ -100,9 +99,6 @@ export async function loadOutlook() {
     potential: {
       // Stale after 30 days without a qualifying run: then there's no "now".
       now: last && last.date >= addDays(date, -30) ? last.vdot : undefined,
-      pbVdot,
-      /** All-time bests. */
-      pbTimes,
       volume: volumeBefore(runs, date),
     },
   };

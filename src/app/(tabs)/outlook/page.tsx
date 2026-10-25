@@ -159,7 +159,9 @@ export default async function OutlookPage() {
             What you could run fresh today, from your run VO₂max (Daniels' tables), ±5 %. The
             marathon also needs volume: it's the slower of that and what your last 8 weeks (
             {o.potential.volume.weeklyKm.toFixed(0)} km/week) support (Tanda 2011), since VO₂max
-            alone predicts marathons too fast for most runners (Vickers &amp; Vertosick 2016).
+            alone predicts marathons too fast for most runners (Vickers &amp; Vertosick 2016). Below
+            about 30 km/week the half is optimistic too, and the marathon sits near the formula's
+            no-training floor.
           </p>
         }
       >
@@ -204,11 +206,12 @@ export default async function OutlookPage() {
             </p>
             <p>
               Bike: physics at a share of your FTP that drops with distance (Friel's age-group
-              guide: Olympic 80–90 %, 70.3 70–80 %, Ironman 60–70 %).
+              guide: Olympic 80–90 %, T100 72–82 %, 70.3 70–80 %, Ironman 60–70 %).
             </p>
             <p>
               Run: your fresh time for the distance, slower off the bike (about 10 % after an
-              Olympic, 18 % after a 70.3, 30 % after an Ironman). Transitions 3–6 min.
+              Olympic, 15 % after a T100, 18 % after a 70.3, 30 % after an Ironman). Transitions 3–6
+              min.
             </p>
           </>
         }

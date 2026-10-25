@@ -167,11 +167,10 @@ export function raceInfo(e: {
  * slower you run off the bike than fresh.
  *   Bike: age-group intensity, Friel (Olympic 80–90 %, 70.3 70–80 %, Ironman 60–70 %); T100's
  *         80 km in between.
- *   Run fade: Tri-Alliance's race-pacing guide (sprint ~6 %, Olympic ~10 %, 70.3 ~18 %,
+ *   Run fade: Tri-Alliance's race-pacing guide (Olympic ~10 %, 70.3 ~18 %,
  *         Ironman 30 %+), a coaching rule, not a study: hence the wide ranges.
  */
 const TRI = {
-  "Sprint triathlon": { legs: [750, 20000, 5000], bike: [0.85, 0.95], fade: [1.03, 1.09] },
   "Olympic triathlon": { legs: [1500, 40000, 10000], bike: [0.8, 0.9], fade: [1.06, 1.14] },
   T100: { legs: [2000, 80000, 18000], bike: [0.72, 0.82], fade: [1.1, 1.2] },
   "Half distance": { legs: [1900, 90000, 21097.5], bike: [0.7, 0.8], fade: [1.12, 1.24] },
@@ -180,7 +179,7 @@ const TRI = {
   string,
   { legs: readonly number[]; bike: readonly number[]; fade: readonly number[] }
 >;
-export type TriLabel = keyof typeof TRI;
+type TriLabel = keyof typeof TRI;
 const triOf = (label: string) => TRI[label as TriLabel] ?? TRI["Olympic triathlon"];
 export const triLegs = (label: string) => triOf(label).legs;
 
