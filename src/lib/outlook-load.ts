@@ -62,7 +62,9 @@ export async function loadOutlook() {
     .reverse()
     .flatMap((x) => x.sportInfo ?? [])
     .find((x) => x.type === "Ride" && x.eftp)?.eftp;
-  const ftp = eftp ?? athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp;
+  const rawFtp = eftp ?? athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp;
+  // eFTP comes with decimals; watts are shown whole everywhere.
+  const ftp = rawFtp && Math.round(rawFtp);
   const p5 = power.list[0];
   // Swims in the last 8 weeks: the fallback race pace when the pool bests can't be real.
   const swims = activities.filter(

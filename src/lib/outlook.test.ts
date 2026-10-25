@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formPct, formTarget, formZone, projectFitness } from "./outlook.ts";
+import { formPct, formTarget, formVerdict, formZone, projectFitness } from "./outlook.ts";
 
 test("fitness projection: steady load converges, rest makes you fresh", () => {
   const steady = projectFitness("2026-01-01", 50, 50, Array(10).fill(50));
@@ -32,4 +32,12 @@ test("form zones match intervals.icu's bands", () => {
     "Optimal",
     "High risk",
   ]);
+});
+
+test("race-day verdict: target edges count as on target", () => {
+  const t = { low: 0, high: 10 };
+  expect(formVerdict(-1, t)).toMatch(/too tired/);
+  expect(formVerdict(0, t)).toBe("on target");
+  expect(formVerdict(10, t)).toBe("on target");
+  expect(formVerdict(11, t)).toBe("fresher than needed");
 });

@@ -142,7 +142,7 @@ function Badges({ list }: { list: Badge[] }) {
   );
 }
 
-export default async function RacesPage() {
+export default async function RecordsPage() {
   const r = await loadRecords();
   const pb5k = r.run[0]?.values[0];
   return (

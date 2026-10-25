@@ -60,3 +60,11 @@ export function formTarget(race: {
     ? { low: 0, high: 10, why: "long event: arrive neutral to slightly fresh" }
     : { low: 5, high: 20, why: "arrive fresh" };
 }
+
+/** Race-day form against its target, in words (low and high count as on target). */
+export const formVerdict = (pct: number, target: { low: number; high: number }) =>
+  pct < target.low
+    ? "too tired, ease off before the race"
+    : pct > target.high
+      ? "fresher than needed"
+      : "on target";

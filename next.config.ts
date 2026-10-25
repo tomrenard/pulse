@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   poweredByHeader: false,
+  // Races was renamed Records: old bookmarks and restored PWA pages still land.
+  async redirects() {
+    return [{ source: "/races", destination: "/records", permanent: true }];
+  },
   async headers() {
     return [
       {

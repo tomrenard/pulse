@@ -1,11 +1,11 @@
 import { addDays, daysBetween, shortDate } from "@/lib/date";
 import { clock, hmm } from "@/lib/format";
-import { formPct, formTarget, projectFitness } from "@/lib/outlook";
+import { formPct, formTarget, formVerdict, projectFitness } from "@/lib/outlook";
 import { loadOutlook } from "@/lib/outlook-load";
 import { freshTime } from "@/lib/potential";
 import { swimCss, swimPace, triLegs, triSplit } from "@/lib/races";
 import { loadSwim } from "@/lib/races-load";
-import { mondayOf, SPORT_COLOR, SPORTS, type Sport, sportOf } from "@/lib/volume";
+import { mondayOf, SPORT_COLOR, SPORTS, type Sport, weeklyVolume } from "@/lib/volume";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
@@ -68,23 +68,17 @@ export default async function OutlookPage() {
   const raceForm = raceDay && Math.round(formPct(raceDay));
 
   // The plan by calendar week (Mon to Sun), this week first: planned hours per sport.
-  const thisMonday = mondayOf(o.date);
-  const weeks = Array.from({ length: 8 }, (_, i) => {
-    const from = addDays(thisMonday, i * 7);
-    const to = addDays(from, 6);
-    const hours = Object.fromEntries(SPORTS.map((sp) => [sp, 0])) as Record<Sport, number>;
-    for (const w of o.workouts) {
-      const d = w.start_date_local.slice(0, 10);
-      if (d >= from && d <= to) hours[sportOf(w.type)] += (w.moving_time ?? 0) / 3600;
-    }
-    const total = SPORTS.reduce((sum, sp) => sum + hours[sp], 0);
-    return {
-      from,
-      hours,
-      total,
-      race: raceDate !== undefined && raceDate >= from && raceDate <= to,
-    };
-  });
+  // weeklyVolume counts back from its last week: this Monday + 7 weeks, so this week comes first.
+  const raceDays = o.races.map((r) => r.start_date_local.slice(0, 10));
+  const weeks = weeklyVolume(o.workouts, addDays(mondayOf(o.date), 49), 8).map((w) => ({
+    from: w.monday,
+    hours: Object.fromEntries(SPORTS.map((sp) => [sp, w.sports[sp].hours])) as Record<
+      Sport,
+      number
+    >,
+    total: SPORTS.reduce((sum, sp) => sum + w.sports[sp].hours, 0),
+    race: raceDays.some((d) => d >= w.monday && d <= addDays(w.monday, 6)),
+  }));
   const planTotal = weeks.reduce((sum, w) => sum + w.total, 0);
   const maxH = Math.max(1, ...weeks.map((w) => w.total));
   const bySport = SPORTS.map((sp) => [sp, weeks.reduce((sum, w) => sum + w.hours[sp], 0)] as const);
@@ -262,10 +256,10 @@ export default async function OutlookPage() {
       >
         {planTotal ? (
           <div className="mod-b">
-            <div className="weekstrip" role="img" aria-label="Planned hours per week by sport">
+            <div className="weekstrip">
               {weeks.map((w, i) => (
                 <div key={w.from} className={`wk-col${w.race ? " race" : ""}`}>
-                  <div className="wk-bar">
+                  <div className="wk-bar" aria-hidden="true">
                     {SPORTS.map((sp) =>
                       w.hours[sp] ? (
                         <i
@@ -297,11 +291,7 @@ export default async function OutlookPage() {
             {raceForm !== undefined && target && (
               <div className="caption">
                 Race-day form {raceForm}% (aim {target.low} to {target.high}%):{" "}
-                {raceForm < target.low
-                  ? "too tired, ease off before the race"
-                  : raceForm > target.high
-                    ? "fresher than needed"
-                    : "on target"}
+                {formVerdict(raceForm, target)}
               </div>
             )}
           </div>
