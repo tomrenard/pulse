@@ -68,9 +68,10 @@ export default async function OutlookPage() {
   const raceForm = raceDay && Math.round(formPct(raceDay));
 
   // The plan by calendar week (Mon to Sun), this week first: planned hours per sport.
-  // weeklyVolume counts back from its last week: this Monday + 7 weeks, so this week comes first.
+  // The plan starts tomorrow, so weeks start from tomorrow's week (on a Sunday: next week).
+  // weeklyVolume counts back from its last week: that Monday + 7 weeks.
   const raceDays = o.races.map((r) => r.start_date_local.slice(0, 10));
-  const weeks = weeklyVolume(o.workouts, addDays(mondayOf(o.date), 49), 8).map((w) => ({
+  const weeks = weeklyVolume(o.workouts, addDays(mondayOf(addDays(o.date, 1)), 49), 8).map((w) => ({
     from: w.monday,
     hours: Object.fromEntries(SPORTS.map((sp) => [sp, w.sports[sp].hours])) as Record<
       Sport,
@@ -257,7 +258,7 @@ export default async function OutlookPage() {
         {planTotal ? (
           <div className="mod-b">
             <div className="weekstrip">
-              {weeks.map((w, i) => (
+              {weeks.map((w) => (
                 <div key={w.from} className={`wk-col${w.race ? " race" : ""}`}>
                   <div className="wk-bar" aria-hidden="true">
                     {SPORTS.map((sp) =>
@@ -273,7 +274,9 @@ export default async function OutlookPage() {
                     )}
                   </div>
                   <b className="num">{w.total ? hmm(w.total * 3600) : "–"}</b>
-                  <small>{w.race ? "Race" : i === 0 ? "This wk" : shortDate(w.from)}</small>
+                  <small>
+                    {w.race ? "Race" : w.from <= o.date ? "This wk" : shortDate(w.from)}
+                  </small>
                 </div>
               ))}
             </div>
