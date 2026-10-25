@@ -172,7 +172,12 @@ export function FitnessChart({
             <span
               key={b.name}
               className="fit-zone"
-              style={{ top: `${(b.top + b.bottom) / 2}%`, color: b.color }}
+              // The zone the read-out is in stays bright; the others fade behind the line.
+              style={{
+                top: `${(b.top + b.bottom) / 2}%`,
+                color: b.color,
+                opacity: b.name === zone.name ? 1 : 0.55,
+              }}
             >
               {b.name}
             </span>

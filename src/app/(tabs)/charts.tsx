@@ -22,7 +22,7 @@ function Ticks({ ticks }: { ticks: { y: number; text: string }[] }) {
   const shown: typeof ticks = [];
   for (const t of ticks) if (shown.every((s) => Math.abs(s.y - t.y) >= 12)) shown.push(t);
   return shown.map((t) => (
-    <span key={t.text} className="chart-tick num" style={{ top: `${t.y}px` }}>
+    <span key={t.y} className="chart-tick num" style={{ top: `${t.y}px` }}>
       {t.text}
     </span>
   ));
@@ -43,12 +43,15 @@ export function Line({
   band,
   label,
   unit,
+  format = (v) => `${Math.round(v)}`,
 }: {
   points: Point[];
   color: string;
   band?: { low: number; high: number };
   label: string;
   unit: string;
+  /** How a value reads in the gutter (weight keeps its decimal). */
+  format?: (v: number) => string;
 }) {
   if (points.length < 2) return <p className="dim">Not enough nights yet.</p>;
   const y = scale([...points.map((p) => p.value), ...(band ? [band.low, band.high] : [])], 2);
@@ -58,9 +61,9 @@ export function Line({
     .join("");
   const last = points.at(-1) as Point;
   const values = points.map((p) => p.value);
-  const ticks = [Math.max(...values), Math.min(...values)].map((v) => ({
+  const ticks = [...new Set([Math.max(...values), Math.min(...values)])].map((v) => ({
     y: y(v),
-    text: `${Math.round(v)}`,
+    text: format(v),
   }));
   return (
     <figure className="chart">
@@ -82,7 +85,7 @@ export function Line({
             />
           )}
           {ticks.map((t) => (
-            <line key={t.text} x1={0} x2={W} y1={t.y} y2={t.y} className="chart-grid" />
+            <line key={t.y} x1={0} x2={W} y1={t.y} y2={t.y} className="chart-grid" />
           ))}
           <path
             d={d}

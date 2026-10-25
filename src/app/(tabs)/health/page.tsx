@@ -208,7 +208,13 @@ export default async function HealthPage() {
       <Module title="Weight" value={h.weight ? `${h.weight.toFixed(1)} kg` : "–"}>
         <div className="mod-b">
           {h.weights.length > 1 && (
-            <Line points={h.weights} color="#fff" label="Weight" unit="kg" />
+            <Line
+              points={h.weights}
+              color="#fff"
+              label="Weight"
+              unit="kg"
+              format={(v) => v.toFixed(1)}
+            />
           )}
           <details className="more add">
             <summary>+ Log today</summary>
