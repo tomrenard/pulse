@@ -21,7 +21,7 @@ test("badges from activities and run bests", () => {
   ];
   const b = Object.fromEntries(badges(list, "2026-10-24").map((x) => [x.title, x]));
   expect(b["Longest ride"]).toMatchObject({ value: "210 km", earned: true });
-  expect(b["Centuries"]?.value).toBe("2");
+  expect(b.Centuries?.value).toBe("2");
   expect(b["Brick days"]?.value).toBe("1");
   expect(b["Week streak"]?.value).toBe("2"); // this week (3) and last week (3)
   expect(b["Everest 2026"]?.value).toBe("0.2×"); // 2025's climbing doesn't count

@@ -22,13 +22,14 @@ self.addEventListener("fetch", (event) => {
   // Built assets never change under the same name: cache first.
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
-      caches
-        .open(ASSETS)
-        .then(
-          async (c) =>
-            (await c.match(req)) ??
-            fetch(req).then((res) => (res.ok && c.put(req, res.clone()), res)),
-        ),
+      caches.open(ASSETS).then(
+        async (c) =>
+          (await c.match(req)) ??
+          fetch(req).then((res) => {
+            if (res.ok) c.put(req, res.clone());
+            return res;
+          }),
+      ),
     );
     return;
   }

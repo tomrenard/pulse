@@ -100,7 +100,7 @@ export async function loadRecords() {
     };
   };
   /** Ride VO2max per window (Hawley & Noakes). */
-  const vo2 = WINDOWS.map(([id], w) => {
+  const vo2 = WINDOWS.map(([id]) => {
     const c = powerAt(id);
     return {
       ride: cyclingVo2(at(c?.secs, c?.watts, 300), at(c?.secs, c?.watts_per_kg, 300)),

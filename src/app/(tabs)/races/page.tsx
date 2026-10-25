@@ -126,15 +126,11 @@ function Badges({ list }: { list: Badge[] }) {
   return (
     <Module
       title="Badges"
-      info={
-        <>
-          {list.map((b) => (
-            <p key={b.title}>
-              {b.title}: {b.value}, {b.detail}.
-            </p>
-          ))}
-        </>
-      }
+      info={list.map((b) => (
+        <p key={b.title}>
+          {b.title}: {b.value}, {b.detail}.
+        </p>
+      ))}
     >
       <div className="mod-b">
         <div className="badge-grid">{list.slice(0, 4).map(cell)}</div>
