@@ -865,7 +865,7 @@ details.add summary {
   padding: 10px 0 0;
 }
 
-/* Races */
+/* Records */
 .levels {
   display: grid;
   gap: 14px;
@@ -999,27 +999,6 @@ ul.recs {
 .badge-cell small {
   font-size: 10px;
   line-height: 1.2;
-}
-details.tools > summary {
-  list-style: none;
-  padding-bottom: 12px;
-  cursor: pointer;
-}
-details.tools > summary::-webkit-details-marker {
-  display: none;
-}
-details.tools > summary::after {
-  content: "›";
-  margin-left: auto;
-  font-size: 16px;
-}
-details.tools[open] > summary::after {
-  transform: rotate(90deg);
-}
-.tool-h {
-  margin: 4px 0 10px;
-  font-size: 15px;
-  font-weight: 600;
 }
 
 /* Outlook */

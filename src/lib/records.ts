@@ -1,9 +1,8 @@
 import { type BadgeActivity, badges } from "@/lib/badges";
-import { addDays, today } from "@/lib/date";
+import { today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "@/lib/level";
 import { orNothing } from "@/lib/nights";
-import { cyclingVo2 } from "@/lib/races";
 
 /** Record windows, as intervals.icu curve ids: all time, 1 year, 6 months, 6 weeks. */
 export const WINDOWS = [
@@ -34,7 +33,6 @@ type PowerCurve = {
   watts_per_kg?: number[];
 };
 export type PaceCurve = { id: string; distance?: number[]; values?: number[] };
-type Athlete = { icu_weight?: number; sportSettings?: { types?: string[]; ftp?: number }[] };
 
 export const HOUR = { next: { revalidate: 3600 } };
 const curves = WINDOWS.map(([id]) => id).join(",");
@@ -47,7 +45,7 @@ export const at = (xs: number[] = [], ys: number[] = [], x: number) => {
 
 /** Best run times (seconds) and best power (W) per window, from intervals.icu's best-effort curves. */
 export async function loadRecords() {
-  const [powerCurves, paceCurves, athlete, activities, wellness] = await Promise.all([
+  const [powerCurves, paceCurves, activities] = await Promise.all([
     orNothing(
       intervals<{ list: PowerCurve[] }>(`/power-curves.json?type=Ride&curves=${curves}`, HOUR),
       { list: [] },
@@ -56,17 +54,10 @@ export async function loadRecords() {
       intervals<{ list: PaceCurve[] }>(`/pace-curves.json?type=Run&curves=${curves}`, HOUR),
       { list: [] },
     ),
-    orNothing(intervals<Athlete>(""), {}),
     orNothing(
       intervals<BadgeActivity[]>(
         `/activities?oldest=2021-01-01&newest=${today()}&fields=start_date_local,type,distance,moving_time,total_elevation_gain`,
         HOUR,
-      ),
-      [],
-    ),
-    orNothing(
-      intervals<{ sportInfo?: { type: string; eftp?: number }[] }[]>(
-        `/wellness?oldest=${addDays(today(), -7)}&newest=${today()}&cols=sportInfo`,
       ),
       [],
     ),
@@ -99,28 +90,9 @@ export async function loadRecords() {
       ride: rideG && { ...rideG, beats: beatsText(rideBeats(rideG.wkg)) },
     };
   };
-  /** Ride VO2max per window (Hawley & Noakes). */
-  const vo2 = WINDOWS.map(([id]) => {
-    const c = powerAt(id);
-    return {
-      ride: cyclingVo2(at(c?.secs, c?.watts, 300), at(c?.secs, c?.watts_per_kg, 300)),
-    };
-  });
   return {
     run,
     power,
-    vo2,
-    ftpSet: athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp,
-    weight: athlete.icu_weight,
-    /** intervals.icu's eFTP: its running estimate of FTP from recent rides. */
-    // Newest day that has one: today's row may not exist yet early in the morning.
-    ftpModel:
-      Math.round(
-        [...wellness]
-          .reverse()
-          .flatMap((w) => w.sportInfo ?? [])
-          .find((x) => x.type === "Ride" && x.eftp)?.eftp ?? 0,
-      ) || undefined,
     pb: level(0),
     now: level(3),
     badges: badges(activities, today()),

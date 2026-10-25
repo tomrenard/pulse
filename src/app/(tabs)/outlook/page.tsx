@@ -9,6 +9,7 @@ import { mondayOf, SPORT_COLOR, SPORTS, type Sport, sportOf } from "@/lib/volume
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
+import { LongRide } from "./LongRide";
 import { Tri } from "./Tri";
 
 const PRIORITY: Record<string, string> = { RACE_A: "A", RACE_B: "B", RACE_C: "C" };
@@ -225,6 +226,20 @@ export default async function OutlookPage() {
       >
         <div className="mod-b">
           <Tri races={tris} />
+        </div>
+      </Module>
+
+      <Module
+        title="Long ride"
+        info={
+          <p>
+            Load a route (GPX) and pick a steady power: moving time from physics on each 100 m of
+            the route, plus your stops. Starts at 65 % of your FTP.
+          </p>
+        }
+      >
+        <div className="mod-b">
+          <LongRide ftp={o.ftp} kg={o.kg} />
         </div>
       </Module>
 

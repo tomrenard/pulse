@@ -1,12 +1,9 @@
 import type { Badge } from "@/lib/badges";
 import { clock as time } from "@/lib/format";
-import { swimCss } from "@/lib/races";
-import { loadSwim } from "@/lib/races-load";
 import { loadRecords } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Glyph, Module } from "../ui";
-import { LongRide } from "./LongRide";
 import { RecordBars } from "./RecordBars";
 
 type Records = Awaited<ReturnType<typeof loadRecords>>;
@@ -146,17 +143,11 @@ function Badges({ list }: { list: Badge[] }) {
 }
 
 export default async function RacesPage() {
-  const [r, x] = await Promise.all([loadRecords(), loadSwim()]);
+  const r = await loadRecords();
   const pb5k = r.run[0]?.values[0];
-  const css = swimCss(x.swim200, x.swim400);
-  const vo2 = (v?: number) => (v ? Math.round(v) : "–");
   return (
     <Sky state="go">
-      <Hero place="Races" word={pb5k ? time(pb5k) : "Records"} sub="5 km PB">
-        <div className="hl num">
-          FTP {r.ftpSet ?? "–"} W <span>· eFTP {r.ftpModel ?? "–"} W</span>
-        </div>
-      </Hero>
+      <Hero place="Records" word={pb5k ? time(pb5k) : "–"} sub="5 km PB" />
 
       <Level r={r} />
 
@@ -177,22 +168,11 @@ export default async function RacesPage() {
 
       <Module
         title="Ride · PB vs now"
-        value={`VO₂max ${vo2(r.vo2[0]?.ride)}`}
         info={
-          <>
-            <p>
-              Best average power for each duration (power data starts in 2025). The filled bar is
-              your best in the chosen window as a share of the PB.
-            </p>
-            <p>
-              FTP {r.ftpSet ?? "–"} W is the value set in intervals.icu; eFTP {r.ftpModel ?? "–"} W
-              is intervals.icu's running estimate from recent rides.
-            </p>
-            <p>
-              Ride VO₂max: Hawley &amp; Noakes from best 5-min power at that day's weight (
-              {vo2(r.vo2[3]?.ride)} over the last 6 weeks).
-            </p>
-          </>
+          <p>
+            Best average power for each duration (power data starts in 2025). The filled bar is your
+            best in the chosen window as a share of the PB.
+          </p>
         }
       >
         <div className="mod-b">
@@ -201,20 +181,6 @@ export default async function RacesPage() {
       </Module>
 
       <Badges list={r.badges} />
-
-      <details className="mod tools">
-        <summary className="mod-h">
-          <span>Tools</span>
-        </summary>
-        <div className="mod-b">
-          <h3 className="tool-h">Long ride estimate</h3>
-          <LongRide ftp={r.ftpModel ?? r.ftpSet} kg={r.weight} />
-          <h3 className="tool-h">Swim critical speed</h3>
-          <p className="caption">
-            {"problem" in css ? css.problem : `CSS ${time(css.per100)} /100 m`}
-          </p>
-        </div>
-      </details>
     </Sky>
   );
 }

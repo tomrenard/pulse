@@ -33,8 +33,8 @@ const TABS = [
     />,
   ],
   [
-    "/races",
-    "Races",
+    "/records",
+    "Records",
     <>
       <path d="M7 4h10v4.5a5 5 0 0 1-10 0z" />
       <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.3M17 6h2.5a2.5 2.5 0 0 1-2.6 3.3M12 13.5V17M8.5 20h7" />
