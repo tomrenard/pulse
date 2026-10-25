@@ -38,7 +38,8 @@ export function FitnessChart({
     1.8 * Math.max(...days.map((d) => d.ctl)),
   );
   const step = stepFor(peak);
-  const top = Math.max(step, Math.ceil(peak / step) * step);
+  // 10% headroom, so the peak never touches the top edge.
+  const top = Math.max(step, Math.ceil((peak * 1.1) / step) * step);
   const ticks = Array.from({ length: top / step + 1 }, (_, k) => k * step);
   const y = (v: number) => 100 - (v / top) * 100;
   const fy = (pct: number) =>
@@ -229,12 +230,7 @@ export function FitnessChart({
             <span
               key={b.name}
               className="fit-zone"
-              // The zone the read-out is in stays bright; the others fade behind the line.
-              style={{
-                top: `${(b.top + b.bottom) / 2}%`,
-                color: b.color,
-                opacity: b.name === zone.name ? 1 : 0.55,
-              }}
+              style={{ top: `${(b.top + b.bottom) / 2}%`, color: b.color }}
             >
               {b.name}
             </span>

@@ -1512,6 +1512,10 @@ ul.plan-steps {
 .fit-plot {
   touch-action: pan-y;
   cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .fit-panel {
   position: relative;
@@ -1546,9 +1550,12 @@ ul.plan-steps {
   position: absolute;
   left: 4px;
   transform: translateY(-50%);
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+  line-height: 1.3;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 .fit-cursor {
