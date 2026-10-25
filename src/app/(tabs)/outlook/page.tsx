@@ -272,6 +272,7 @@ export default async function OutlookPage() {
               ride={o.rideRate}
               run={o.runRate}
               fit={o.power}
+              race={raceDate ? { date: raceDate, target } : undefined}
             />
           </div>
         </Module>

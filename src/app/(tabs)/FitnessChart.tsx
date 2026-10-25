@@ -18,10 +18,13 @@ const stepFor = (max: number) => [5, 10, 20, 25, 50, 100].find((s) => max / s <=
 export function FitnessChart({
   days,
   endLabel = "Today",
+  race,
 }: {
   days: Day[];
   /** What the last day is called before you touch the chart ("Today", "In 8 weeks"). */
   endLabel?: string;
+  /** A race day to mark, with its form target band in % when known. */
+  race?: { date: string; target?: { low: number; high: number } };
 }) {
   const [at, setAt] = useState<number>();
   const gradId = useId();
@@ -49,6 +52,24 @@ export function FitnessChart({
   const line = (f: (d: Day) => number) =>
     days.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${f(d).toFixed(1)}`).join("");
   const fitness = line((d) => y(d.ctl));
+  // Form split in two paths: solid where it is on the scale, dashed where it runs off it (a
+  // flat edge would otherwise read as a real value). A step touching the scale stays solid.
+  const off = days.map((d) => {
+    const p = formPct(d);
+    return p > FORM_TOP || p < FORM_BOTTOM;
+  });
+  const pt = (i: number) => `${x(i).toFixed(1)} ${fy(formPct(days[i] as Day)).toFixed(1)}`;
+  const isOff = (i: number) => Boolean(off[i - 1] && off[i]);
+  // One sub-path per run, since a dash pattern restarts at every M.
+  const formPath = (dashed: boolean) =>
+    days
+      .map((_, i) => {
+        if (!i || isOff(i) !== dashed) return "";
+        const start = i === 1 || isOff(i - 1) !== dashed ? `M${pt(i - 1)}` : "";
+        return `${start}L${pt(i)}`;
+      })
+      .join("");
+  const raceAt = race ? days.findIndex((d) => d.date === race.date) : -1;
   const months = days.flatMap((d, i) =>
     d.date.endsWith("-01")
       ? [
@@ -125,6 +146,15 @@ export function FitnessChart({
               {t}
             </span>
           ))}
+          {raceAt >= 0 && (
+            <span
+              // Near the right edge the label sits left of the marker, clear of the ticks.
+              className={`fit-race${raceAt / (n - 1) > 0.85 ? " flip" : ""}`}
+              style={{ left: `${(raceAt / (n - 1)) * 100}%` }}
+            >
+              Race
+            </span>
+          )}
           {cursor}
         </div>
         <div className="fit-panel form">
@@ -161,11 +191,38 @@ export function FitnessChart({
               />
             ))}
             <line x1={0} x2={300} y1={fy(0)} y2={fy(0)} className="fit-grid" />
+            {raceAt >= 0 && (
+              <line
+                x1={x(raceAt)}
+                x2={x(raceAt)}
+                y1={0}
+                y2={100}
+                className="fit-grid"
+                strokeDasharray="3 3"
+              />
+            )}
+            {raceAt >= 0 && race?.target && (
+              <rect
+                x={x(raceAt) - 4}
+                width={8}
+                y={fy(race.target.high)}
+                height={fy(race.target.low) - fy(race.target.high)}
+                fill="#fff"
+                fillOpacity={0.35}
+              />
+            )}
             <path
-              d={line((d) => fy(formPct(d)))}
+              d={formPath(false)}
               className="fit-line"
               stroke={`url(#${gradId})`}
               strokeWidth={1.5}
+            />
+            <path
+              d={formPath(true)}
+              className="fit-line"
+              stroke={`url(#${gradId})`}
+              strokeWidth={1.5}
+              strokeDasharray="2 3"
             />
           </svg>
           {bands.map((b) => (

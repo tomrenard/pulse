@@ -1,5 +1,6 @@
 import { shortDate } from "@/lib/date";
 import { hmm } from "@/lib/format";
+import { Scrub } from "./Scrub";
 
 /** Hand-drawn SVG charts: a line with an optional normal band, and bars with a target line. */
 
@@ -18,20 +19,21 @@ function scale(values: number[], pad: number) {
  * Values in a gutter right of the plot, each with a faint line across, so you can read the
  * chart's scale. Labels closer than a line height to one already shown are dropped.
  */
-function Ticks({ ticks }: { ticks: { y: number; text: string }[] }) {
+function Ticks({ ticks }: { ticks: { y: number; text: string; color?: string }[] }) {
   const shown: typeof ticks = [];
   for (const t of ticks) if (shown.every((s) => Math.abs(s.y - t.y) >= 12)) shown.push(t);
   return shown.map((t) => (
-    <span key={t.y} className="chart-tick num" style={{ top: `${t.y}px` }}>
+    <span key={t.y} className="chart-tick num" style={{ top: `${t.y}px`, color: t.color }}>
       {t.text}
     </span>
   ));
 }
 
-function Axis({ points }: { points: Point[] }) {
+function Axis({ points, note }: { points: Point[]; note?: string }) {
   return (
     <div className="axis">
       <span>{shortDate((points[0] as Point).date)}</span>
+      {note && <span>{note}</span>}
       <span>{shortDate((points.at(-1) as Point).date)}</span>
     </div>
   );
@@ -67,7 +69,10 @@ export function Line({
   }));
   return (
     <figure className="chart">
-      <div className="chart-plot">
+      <Scrub
+        dates={points.map((p) => p.date)}
+        labels={points.map((p) => `${format(p.value)} ${unit}`)}
+      >
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
@@ -97,8 +102,9 @@ export function Line({
           />
         </svg>
         <span className="chart-dot" style={{ top: `${y(last.value)}px`, background: color }} />
-        <Ticks ticks={ticks} />
-      </div>
+        {/* Today's value first, in the line's colour, so it wins a clash with max or min. */}
+        <Ticks ticks={[{ y: y(last.value), text: format(last.value), color }, ...ticks]} />
+      </Scrub>
       <Axis points={points} />
     </figure>
   );
@@ -109,12 +115,14 @@ export function Bars({
   color,
   target,
   label,
+  unit = "",
   format = (v) => `${Math.round(v)}`,
 }: {
   points: Point[];
   color: string;
   target?: number;
   label: string;
+  unit?: string;
   /** How a value reads in the gutter (sleep seconds as h:mm). */
   format?: (v: number) => string;
 }) {
@@ -128,9 +136,14 @@ export function Bars({
     y: y(v),
     text: format(v),
   }));
+  const hit = target === undefined ? 0 : points.filter((p) => p.value >= target).length;
   return (
     <figure className="chart">
-      <div className="chart-plot">
+      <Scrub
+        bars
+        dates={points.map((p) => p.date)}
+        labels={points.map((p) => `${format(p.value)}${unit && ` ${unit}`}`)}
+      >
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label}>
           <line x1={0} x2={W} y1={y(top)} y2={y(top)} className="chart-grid" />
           {points.map((p, i) => (
@@ -142,7 +155,10 @@ export function Bars({
               height={H - y(p.value)}
               rx={Math.min(3, slot * 0.3)}
               fill={color}
-              fillOpacity={i === points.length - 1 ? 1 : 0.7}
+              // Nights short of the target fade, so the hits stand out; the last bar stays full.
+              fillOpacity={
+                i === points.length - 1 ? 1 : target !== undefined && p.value < target ? 0.35 : 0.75
+              }
             />
           ))}
           {target !== undefined && (
@@ -158,8 +174,11 @@ export function Bars({
           )}
         </svg>
         <Ticks ticks={ticks} />
-      </div>
-      <Axis points={points} />
+      </Scrub>
+      <Axis
+        points={points}
+        note={target === undefined ? undefined : `${hit}/${points.length} on target`}
+      />
     </figure>
   );
 }

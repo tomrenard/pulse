@@ -1569,3 +1569,38 @@ ul.plan-steps {
   position: absolute;
   transform: translateX(-50%);
 }
+
+/* Touch-to-read on the health charts */
+.scrub-read {
+  position: absolute;
+  top: -20px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--fg-2);
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 1px 6px;
+  pointer-events: none;
+}
+.scrub-read b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.fit-race {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed rgba(255, 255, 255, 0.6);
+  padding-left: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--fg-2);
+  pointer-events: none;
+}
+.fit-race.flip {
+  border-left: 0;
+  border-right: 1px dashed rgba(255, 255, 255, 0.6);
+  padding: 0 3px 0 0;
+  transform: translateX(-100%);
+}

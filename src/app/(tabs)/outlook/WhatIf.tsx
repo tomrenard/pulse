@@ -15,6 +15,7 @@ export function WhatIf({
   ride: rideRate,
   run: runRate,
   fit,
+  race,
 }: {
   date: string;
   ctl: number;
@@ -23,6 +24,8 @@ export function WhatIf({
   ride: Rate;
   run: Rate;
   fit?: PowerFit;
+  /** The next race, marked on the chart when the sliders reach it. */
+  race?: { date: string; target?: { low: number; high: number } };
 }) {
   const [ride, setRide] = useState(6);
   const [run, setRun] = useState(1);
@@ -64,7 +67,11 @@ export function WhatIf({
       {slider("Ride", ride, setRide, [0, 20, 0.5], "h/wk")}
       {slider("Run", run, setRun, [0, 10, 0.5], "h/wk")}
       {slider("For", weeks, setWeeks, [1, 16, 1], weeks === 1 ? "week" : "weeks")}
-      <FitnessChart days={path} endLabel={`In ${weeks} ${weeks === 1 ? "week" : "weeks"}`} />
+      <FitnessChart
+        days={path}
+        race={race}
+        endLabel={`In ${weeks} ${weeks === 1 ? "week" : "weeks"}`}
+      />
       {power && fit && (
         <div className="stats num">
           <span>
