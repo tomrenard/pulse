@@ -5,7 +5,7 @@ import { loadOutlook } from "@/lib/outlook-load";
 import { freshTime } from "@/lib/potential";
 import { swimCss, swimPace, triLegs, triSplit } from "@/lib/races";
 import { loadSwim } from "@/lib/races-load";
-import { mondayOf, SPORT_COLOR, SPORTS, type Sport, weeklyVolume } from "@/lib/volume";
+import { planStart, SPORT_COLOR, SPORTS, type Sport, weeklyVolume } from "@/lib/volume";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Module } from "../ui";
@@ -68,10 +68,9 @@ export default async function OutlookPage() {
   const raceForm = raceDay && Math.round(formPct(raceDay));
 
   // The plan by calendar week (Mon to Sun): planned hours per sport.
-  // The plan starts tomorrow, so weeks start from tomorrow's week (on a Sunday: next week).
-  // weeklyVolume counts back from its last week: that Monday + 7 weeks.
+  // weeklyVolume counts back from its last week: the plan's first Monday + 7 weeks.
   const raceDays = o.races.map((r) => r.start_date_local.slice(0, 10));
-  const weeks = weeklyVolume(o.workouts, addDays(mondayOf(addDays(o.date, 1)), 49), 8).map((w) => ({
+  const weeks = weeklyVolume(o.workouts, addDays(planStart(o.date), 49), 8).map((w) => ({
     from: w.monday,
     hours: Object.fromEntries(SPORTS.map((sp) => [sp, w.sports[sp].hours])) as Record<
       Sport,

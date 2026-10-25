@@ -36,6 +36,9 @@ export const mondayOf = (date: string) => {
   return addDays(date, -((day + 6) % 7));
 };
 
+/** First week of the plan: the plan starts tomorrow, so on a Sunday that's next week. */
+export const planStart = (today: string) => mondayOf(addDays(today, 1));
+
 /** Weekly totals per sport for the `weeks` weeks ending with the current one (Mon–Sun). */
 export function weeklyVolume(activities: VolumeActivity[], today: string, weeks = WEEKS) {
   const first = addDays(mondayOf(today), -7 * (weeks - 1));
