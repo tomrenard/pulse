@@ -67,7 +67,7 @@ export default async function OutlookPage() {
   const target = next ? formTarget({ ...next, distance: next.info.metres }) : undefined;
   const raceForm = raceDay && Math.round(formPct(raceDay));
 
-  // The plan by calendar week (Mon to Sun), this week first: planned hours per sport.
+  // The plan by calendar week (Mon to Sun): planned hours per sport.
   // The plan starts tomorrow, so weeks start from tomorrow's week (on a Sunday: next week).
   // weeklyVolume counts back from its last week: that Monday + 7 weeks.
   const raceDays = o.races.map((r) => r.start_date_local.slice(0, 10));
