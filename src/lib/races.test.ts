@@ -2,7 +2,6 @@ import { expect, test } from "vitest";
 import {
   bestVdot,
   cyclingVo2,
-  parseCorosFitness,
   raceInfo,
   rideTime,
   stretches,
@@ -34,29 +33,6 @@ test("swim CSS refuses impossible times", () => {
   expect(swimCss(200, 420)).toEqual({ per100: 110 });
   expect(swimCss(150, 290)).toHaveProperty("problem"); // CSS faster than the 200 m pace
   expect(swimCss(undefined, 420)).toHaveProperty("problem");
-});
-
-test("COROS fitness overview parses, and fails loud on a new format", () => {
-  const text = `Fitness Assessment Overview
-========================
-
-VO2max: 50
-Running Level: 80
-Threshold Pace: 4:30 /km
-5 km Prediction: 21:00
-10 km Prediction: 43:30
-Half Marathon Prediction: 1:36:00
-Marathon Prediction: 3:20:00`;
-  expect(parseCorosFitness(text)).toEqual({
-    vo2max: 50,
-    k5: 1260,
-    k10: 2610,
-    half: 5760,
-    marathon: 12000,
-  });
-  expect(() => parseCorosFitness("VO2max = 50; 5 km Prediction = 21 min")).toThrow(
-    /format changed/,
-  );
 });
 
 test("ride time: flat road at 200 W is about 32 km/h; climbs slow you down", () => {

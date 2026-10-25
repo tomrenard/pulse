@@ -3,7 +3,6 @@ import { db } from "@/db/client";
 import { log, night } from "@/db/schema";
 import { addDays, today } from "@/lib/date";
 import { putWellness } from "@/lib/intervals";
-import { parseCorosFitness } from "@/lib/races";
 import { accessToken } from "./auth.ts";
 import { corosSession } from "./mcp.ts";
 import {
@@ -59,7 +58,6 @@ export async function syncCoros(start = addDays(today(), -2), end = today()) {
     await db()
       .insert(log)
       .values({ kind: "coros-sync", detail: `ok ${nights.length} days ${from}..${to}` });
-    await saveCorosFitness(tool);
     return nights.length;
   } catch (error) {
     const detail = `error: ${error instanceof Error ? error.message : String(error)}`;
@@ -83,24 +81,4 @@ async function save(nights: Night[]) {
     ]),
   );
   await db().insert(night).values(nights).onConflictDoUpdate({ target: night.date, set });
-}
-
-/**
- * COROS's own VO2max and race predictor, for comparison on the Races tab. Runs after the
- * nights are saved and fails on its own: a comparison extra must not break the core sync.
- */
-async function saveCorosFitness(tool: (name: string) => Promise<string>) {
-  try {
-    const fitness = parseCorosFitness(await tool("queryFitnessAssessmentOverview"));
-    // An empty reply must not hide the last good numbers.
-    if (fitness.vo2max === undefined && fitness.k5 === undefined) return;
-    await db()
-      .insert(log)
-      .values({ kind: "coros-fitness", detail: JSON.stringify(fitness) });
-  } catch (error) {
-    const detail = `error: ${error instanceof Error ? error.message : String(error)}`;
-    await db()
-      .insert(log)
-      .values({ kind: "coros-fitness-error", detail: detail.slice(0, 500) });
-  }
 }

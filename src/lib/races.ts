@@ -43,29 +43,6 @@ export function swimCss(t200?: number, t400?: number): { per100: number } | { pr
   return { per100: (t400 - t200) / 2 };
 }
 
-/** COROS fitness overview text → numbers (seconds for times and pace per km). */
-export function parseCorosFitness(text: string) {
-  const time = (label: string) => {
-    const m = text.match(new RegExp(`^${label}: (?:(\\d+):)?(\\d+):(\\d+)`, "m"));
-    return m ? Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) : undefined;
-  };
-  const num = (label: string) => {
-    const m = text.match(new RegExp(`^${label}: (\\d+(?:\\.\\d+)?)`, "m"));
-    return m ? Number(m[1]) : undefined;
-  };
-  const out = {
-    vo2max: num("VO2max"),
-    k5: time("5 km Prediction"),
-    k10: time("10 km Prediction"),
-    half: time("Half Marathon Prediction"),
-    marathon: time("Marathon Prediction"),
-  };
-  if (/VO2max|Prediction/.test(text) && out.vo2max === undefined && out.k5 === undefined) {
-    throw new Error("COROS fitness overview: format changed?");
-  }
-  return out;
-}
-
 /** A route as ~100 m stretches: length (m) and gradient (rise/run). */
 export type Stretch = { metres: number; grade: number };
 
