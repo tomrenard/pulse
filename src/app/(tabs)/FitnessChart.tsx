@@ -8,7 +8,7 @@ import { type Day, FORM_ZONES, formPct, formZone } from "@/lib/outlook";
 const FORM_TOP = 40;
 const FORM_BOTTOM = -50;
 
-/** A round step giving 3–4 gridlines up to `max`. */
+/** A round step giving 3–4 gridlines up to `max` (up to 5 with the headroom). */
 const stepFor = (max: number) => [5, 10, 20, 25, 50, 100].find((s) => max / s <= 4) ?? 100;
 
 /**
