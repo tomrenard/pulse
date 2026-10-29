@@ -7,7 +7,14 @@ import { intervals } from "@/lib/intervals";
 import { intensityTrend } from "@/lib/load";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
-import { hoursOf, mondayOf, type VolumeActivity, WEEKS, weeklyVolume } from "@/lib/volume";
+import {
+  hoursOf,
+  mondayOf,
+  type VolumeActivity,
+  WEEKS,
+  weeklyVolume,
+  weekPlan,
+} from "@/lib/volume";
 
 type Wellness = { id: string; ctl?: number; atl?: number };
 type Step = {
@@ -72,13 +79,8 @@ export async function loadToday() {
     ]);
   const w = wellness.find((x) => x.id === date);
   const tsb = tsbOf(w);
-  // This week's planned hours, once the plan covers the week (a session by Wednesday): a plan
-  // that starts on Sunday would make the week look ten times over.
   const monday = mondayOf(date);
-  const week = events.filter(
-    (e) => e.category === "WORKOUT" && e.start_date_local.slice(0, 10) <= addDays(monday, 6),
-  );
-  const covers = week.some((e) => e.start_date_local.slice(0, 10) <= addDays(monday, 2));
+  const week = weekPlan(events, monday);
   const doneLoad = activities
     .filter((a) => a.start_date_local.slice(0, 10) >= monday)
     .reduce((sum, a) => sum + (a.icu_training_load ?? 0), 0);
@@ -107,11 +109,11 @@ export async function loadToday() {
     lastSync,
     volume: weeklyVolume(activities, date),
     corosConnected: connected,
-    plannedHours: covers ? hoursOf(week) : undefined,
+    plannedHours: week.length ? hoursOf(week) : undefined,
     trend: intensityTrend(w?.ctl, w?.atl, wellness.find((x) => x.id === addDays(date, -1))?.atl),
     week: {
       done: Math.round(doneLoad),
-      planned: covers ? Math.round(loadOf(week)) : undefined,
+      planned: week.length ? Math.round(loadOf(week)) : undefined,
       projected: Math.round(doneLoad + loadOf(ahead)),
       ctl: w?.ctl,
     },

@@ -5,8 +5,8 @@ import { shortDate } from "@/lib/date";
 import { type Day, FORM_ZONES, formPct, formZone } from "@/lib/outlook";
 
 // Form panel range, in % of fitness.
-const FORM_TOP = 40;
-const FORM_BOTTOM = -50;
+const FORM_TOP = 60;
+const FORM_BOTTOM = -70;
 
 /** A round step giving 3–4 gridlines up to `max` (up to 5 with the headroom). */
 const stepFor = (max: number) => [5, 10, 20, 25, 50, 100].find((s) => max / s <= 4) ?? 100;

@@ -21,16 +21,18 @@ test("form % and race-length target", () => {
   expect(formTarget({ type: "Ride" })).toBeUndefined();
 });
 
-test("form zones match intervals.icu's bands", () => {
-  expect([25, 20, 10, 0, -10, -20, -30, -45].map((p) => formZone(p).name)).toEqual([
-    "Transition",
-    "Transition",
-    "Fresh",
-    "Grey zone",
-    "Grey zone",
-    "Optimal",
-    "Optimal",
-    "High risk",
+test("form zones are COROS's trend bands told on form %", () => {
+  // Form −31 % = trend 131 % (Optimized); −50 % = 150 % (Excessive); +20 % = 80 % (Maintaining).
+  expect([60, 50, 30, 20, 5, 0, -31, -50, -60].map((p) => formZone(p).name)).toEqual([
+    "Decreasing",
+    "Performance",
+    "Performance",
+    "Maintaining",
+    "Maintaining",
+    "Optimized",
+    "Optimized",
+    "Excessive",
+    "Excessive",
   ]);
 });
 

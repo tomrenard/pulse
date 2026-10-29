@@ -36,6 +36,21 @@ export const mondayOf = (date: string) => {
   return addDays(date, -((day + 6) % 7));
 };
 
+/**
+ * A week's planned workouts, only when the plan covers the week (a session by Wednesday): a plan
+ * that starts on Saturday would make the week look many times over plan.
+ */
+export function weekPlan<T extends { category: string; start_date_local: string }>(
+  events: T[],
+  monday: string,
+) {
+  const week = events.filter((e) => {
+    const day = e.start_date_local.slice(0, 10);
+    return e.category === "WORKOUT" && day >= monday && day <= addDays(monday, 6);
+  });
+  return week.some((e) => e.start_date_local.slice(0, 10) <= addDays(monday, 2)) ? week : [];
+}
+
 /** First week of the plan: the plan starts tomorrow, so on a Sunday that's next week. */
 export const planStart = (today: string) => mondayOf(addDays(today, 1));
 

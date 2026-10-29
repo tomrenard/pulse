@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { shortDate, today } from "@/lib/date";
+import { addDays, shortDate, today } from "@/lib/date";
 import { hm, hmm } from "@/lib/format";
+import { intensityMix, intensityTrend, WEEK_ZONES, weekLoads } from "@/lib/load";
 import { loadReview } from "@/lib/review-load";
 import { loadTraining } from "@/lib/training";
 import { mondayOf, sportOf } from "@/lib/volume";
@@ -16,6 +17,19 @@ export default async function TrainingPage() {
   const [t, review] = await Promise.all([loadTraining(), loadReview(today())]);
   const week = t.year.at(-1)?.sports;
   const hours = week ? Object.values(week).reduce((s, x) => s + x.hours, 0) : 0;
+  const ctlBy = new Map(t.fitness.map((d) => [d.date, d.ctl]));
+  const loads = weekLoads(
+    t.year.slice(-12).map((w) => ({
+      monday: w.monday,
+      load: Math.round(Object.values(w.sports).reduce((s, x) => s + x.load, 0)),
+    })),
+    // The fitness a week starts from: Sunday's, before Monday's training.
+    (monday) => ctlBy.get(addDays(monday, -1)),
+  );
+  const loadTop = Math.max(...loads.map((w) => Math.max(w.load, w.usual ?? 0)), 1);
+  const mix = intensityMix(t.zones.hr);
+  // The same words as Today: COROS's load trend, not intervals.icu's form zones.
+  const trend = intensityTrend(t.ctl, t.atl, t.atlBefore);
   // Last 3 weeks of activities, grouped Monday to Sunday; older ones behind "Show more".
   const weeks = new Map<string, typeof t.feed>();
   for (const a of t.feed) {
@@ -60,9 +74,14 @@ export default async function TrainingPage() {
         sub="this week"
       >
         <div className="hl num">
-          Fitness {t.ctl != null ? Math.round(t.ctl) : "–"} <span>·</span> Form{" "}
-          {t.tsb != null ? Math.round(t.tsb) : "–"} <span>·</span> Ramp{" "}
-          {t.ramp != null ? `${t.ramp > 0 ? "+" : ""}${t.ramp.toFixed(1)}/wk` : "–"}
+          Fitness {t.ctl != null ? Math.round(t.ctl) : "–"}
+          {t.ramp != null && ` ${t.ramp > 0 ? "▲" : "▼"}${Math.abs(t.ramp).toFixed(1)}/wk`}
+          {trend && (
+            <>
+              {" "}
+              <span>·</span> {trend.zone} load
+            </>
+          )}
         </div>
       </Hero>
 
@@ -74,9 +93,9 @@ export default async function TrainingPage() {
           <>
             <p>
               Fitness is your 42-day load average, fatigue your 7-day one; form is fitness minus
-              fatigue (intervals.icu). Form is also shown as a % of fitness, on intervals.icu's
-              zones: optimal −30 to −10 % (building), grey zone −10 to +5 %, fresh +5 to +20 %
-              (race-ready), below −30 % high risk.
+              fatigue (intervals.icu), also shown as a % of fitness. The zones are COROS's load
+              trend, the same words as Today: Optimized 0 to −50 % (building), Excessive below −50
+              %, Maintaining 0 to +20 %, Performance +20 to +50 % (tapered, race-ready).
             </p>
             <p>
               Ramp is the weekly change in fitness. +5 to +8 a week is a common rule of thumb, not a
@@ -90,27 +109,96 @@ export default async function TrainingPage() {
         </div>
       </Module>
 
+      <Module
+        title="Load · 12 weeks"
+        info={
+          <p>
+            Each week's training load, coloured by what it did to your fitness against a usual week
+            (7 × the fitness you started it with, the white tick): under 0.8× lose, 0.8–1× keep,
+            1–1.5× build safely, above 1.5× overreach. This week is still filling up.
+          </p>
+        }
+      >
+        <div className="mod-b">
+          <div className="load-weeks" role="img" aria-label="Weekly load, last 12 weeks">
+            {loads.map((w, i) => {
+              const z = w.zone ? WEEK_ZONES.indexOf(w.zone) : -1;
+              return (
+                <span key={w.monday} className={i === loads.length - 1 ? "now" : undefined}>
+                  <i
+                    className={z >= 0 ? `wz${z}` : undefined}
+                    style={{ height: `${(w.load / loadTop) * 100}%` }}
+                  />
+                  {w.usual && <b style={{ bottom: `${(w.usual / loadTop) * 100}%` }} />}
+                </span>
+              );
+            })}
+          </div>
+          <div className="week-legend">
+            {WEEK_ZONES.map((z, i) => (
+              <span key={z.label}>
+                <i className={`wz${i}`} />
+                {["Lose", "Keep", "Build", "Over"][i]}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Module>
+
       <Volume weeks={t.year} title="52 weeks" compact />
 
-      {(t.zones.power.some(Boolean) || t.zones.hr.some(Boolean)) && (
+      {(mix || t.zones.power.some(Boolean)) && (
         <Module
-          title="Zones · 4 weeks"
+          title="Intensity · 4 weeks"
           info={
             <>
               <p>
-                Share of riding time in each power zone, and of all training in each heart-rate
-                zone, over 4 weeks.
+                Heart-rate time over 4 weeks, all sports: easy is Z1–2, moderate Z3, hard Z4 and up.
+                Endurance training works best mostly easy with a little hard (about 80/20, Seiler).
               </p>
               <p>
-                Power:{" "}
+                Heart rate:{" "}
+                {t.zones.hr.map((s, i) => `Z${i + 1} ${hm(s).replace(" ", "")}`).join(" · ")}
+              </p>
+              <p>
+                Power (rides):{" "}
                 {t.zones.power.map((s, i) => `Z${i + 1} ${hm(s).replace(" ", "")}`).join(" · ")}
               </p>
             </>
           }
         >
           <div className="mod-b">
-            <Zones secs={t.zones.power} label="Power" />
-            <Zones secs={t.zones.hr} label="Heart rate" />
+            {mix && (
+              <>
+                <div
+                  className="zone-bar mix"
+                  role="img"
+                  aria-label={`Easy ${Math.round(mix.easy * 100)}%, moderate ${Math.round(mix.moderate * 100)}%, hard ${Math.round(mix.hard * 100)}%`}
+                >
+                  {(
+                    [
+                      ["Easy", mix.easy, "var(--go)"],
+                      ["Mod", mix.moderate, "var(--mid)"],
+                      ["Hard", mix.hard, "var(--stop)"],
+                    ] as const
+                  ).map(([name, share, bg]) =>
+                    share > 0 ? (
+                      <i key={name} style={{ flex: share, background: bg }}>
+                        {share >= 0.18
+                          ? `${name} ${Math.round(share * 100)}%`
+                          : share >= 0.08
+                            ? `${Math.round(share * 100)}`
+                            : ""}
+                      </i>
+                    ) : null,
+                  )}
+                </div>
+                <p className="mod-line">
+                  <span className={`signal-word ${mix.tone}`}>{mix.text}</span>
+                </p>
+              </>
+            )}
+            <Zones secs={t.zones.power} label="Power, rides" />
           </div>
         </Module>
       )}

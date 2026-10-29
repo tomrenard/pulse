@@ -26,16 +26,19 @@ export function projectFitness(start: string, ctl0: number, atl0: number, loads:
 /** Form as % of fitness, see FORM_ZONES. */
 export const formPct = (d: { ctl: number; tsb: number }) => (d.ctl > 0 ? (d.tsb / d.ctl) * 100 : 0);
 
-/** intervals.icu's form zones, on form as a % of fitness, top down. */
+/**
+ * COROS's Intensity Trend bands (see lib/load.ts) told on form % of fitness, top down: form % is
+ * 100 − trend %, so one scale and one set of words across the app. A zone holds form above `min`.
+ */
 export const FORM_ZONES = [
-  { name: "Transition", min: 20, color: "var(--mid)" },
-  { name: "Fresh", min: 5, color: "var(--form)" },
-  { name: "Grey zone", min: -10, color: "rgba(255,255,255,.5)" },
-  { name: "Optimal", min: -30, color: "var(--go)" },
-  { name: "High risk", min: Number.NEGATIVE_INFINITY, color: "var(--stop)" },
+  { name: "Decreasing", min: 50, color: "var(--mid)" },
+  { name: "Performance", min: 20, color: "var(--form)" },
+  { name: "Maintaining", min: 0, color: "rgba(255,255,255,.5)" },
+  { name: "Optimized", min: -50, color: "var(--go)" },
+  { name: "Excessive", min: Number.NEGATIVE_INFINITY, color: "var(--stop)" },
 ] as const;
 
-export const formZone = (pct: number) => FORM_ZONES.find((z) => pct >= z.min) ?? FORM_ZONES[4];
+export const formZone = (pct: number) => FORM_ZONES.find((z) => pct > z.min) ?? FORM_ZONES[4];
 
 /**
  * Race-day form target: long events (≥ 4 h) want about neutral to slightly fresh, so fitness

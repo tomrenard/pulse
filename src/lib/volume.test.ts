@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mondayOf, planStart, sportOf, weeklyVolume } from "./volume.ts";
+import { mondayOf, planStart, sportOf, weeklyVolume, weekPlan } from "./volume.ts";
 
 test("monday of a date", () => {
   expect(mondayOf("2026-10-24")).toBe("2026-10-19"); // Saturday
@@ -47,4 +47,12 @@ test("plan starts with tomorrow's week: next week on a Sunday, this week otherwi
   expect(planStart("2026-10-25")).toBe("2026-10-26"); // Sunday
   expect(planStart("2026-10-26")).toBe("2026-10-26"); // Monday
   expect(planStart("2026-10-31")).toBe("2026-10-26"); // Saturday
+});
+
+test("week plan only when it covers the week: a plan starting Saturday doesn't count", () => {
+  const ev = (day: string) => ({ category: "WORKOUT", start_date_local: `${day}T00:00:00` });
+  expect(weekPlan([ev("2026-10-24"), ev("2026-10-25")], "2026-10-19")).toEqual([]);
+  expect(
+    weekPlan([ev("2026-10-27"), ev("2026-10-31"), ev("2026-11-02")], "2026-10-26"),
+  ).toHaveLength(2);
 });
