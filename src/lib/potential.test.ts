@@ -6,6 +6,7 @@ import {
   hrVo2Series,
   tandaMarathon,
   timeAt,
+  valueOn,
   volumeBefore,
 } from "./potential.ts";
 import { vdot } from "./races.ts";
@@ -69,4 +70,16 @@ test("volume before a date", () => {
     { start_date_local: "2026-07-01T08:00", distance: 10000, moving_time: 3000 },
   ];
   expect(volumeBefore(runs, "2026-09-10")).toEqual({ weeklyKm: 10 / 8, pace: 300 });
+});
+
+test("value on a date: the last point at or before it", () => {
+  const s = [
+    { date: "2026-07-01", vdot: 52 },
+    { date: "2026-08-15", vdot: 51 },
+    { date: "2026-10-20", vdot: 50 },
+  ];
+  expect(valueOn(s, "2026-08-20")?.vdot).toBe(51);
+  expect(valueOn(s, "2026-06-01")).toBeUndefined();
+  // A month after the last run: no value, not a stale one.
+  expect(valueOn(s, "2026-09-20")).toBeUndefined();
 });

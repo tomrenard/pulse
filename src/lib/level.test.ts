@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "./level.ts";
+import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade, vo2Word } from "./level.ts";
 
 test("age grade picks your strongest distance and band", () => {
   // 2:59:10 marathon = 7235 / 10750 = 67.3 %; 18:22 5 km = 772 / 1102 = 70.1 %
@@ -32,4 +32,14 @@ test("finisher shares: interpolated inside the data, a bound outside it", () => 
   expect(beatsText(rideBeats(10))).toBe("more than 90%");
   expect(beatsText(rideBeats(2))).toBe("under 25%");
   expect(beatsText(rideBeats(3.65))).toBe("~63%");
+});
+
+test("VO2max words: Cooper Institute, men 30-39", () => {
+  expect([55, 50, 45, 42, 38].map((v) => vo2Word(v).word)).toEqual([
+    "Superior",
+    "Excellent",
+    "Good",
+    "Fair",
+    "Poor",
+  ]);
 });

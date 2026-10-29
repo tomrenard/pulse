@@ -94,3 +94,12 @@ export function volumeBefore(runs: Run[], date: string) {
   const secs = inWindow.reduce((s, r) => s + (r.moving_time ?? 0), 0);
   return { weeklyKm: km / 8, pace: km > 0 ? secs / km : 345 };
 }
+
+/**
+ * The series value on or just before `date`, if a run falls within `days` before it: after a long
+ * break the last known value is old news, not that day's fitness.
+ */
+export function valueOn<T extends { date: string }>(series: T[], date: string, days = 14) {
+  const last = series.filter((s) => s.date <= date).at(-1);
+  return last && last.date >= addDays(date, -days) ? last : undefined;
+}

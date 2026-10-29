@@ -119,3 +119,14 @@ export const rideBeats = (wkg: number) =>
     ],
     wkg,
   );
+
+/**
+ * VO2max in the Cooper Institute's words, men 30–39 (Garmin prints the same table): Superior from
+ * 54, Excellent 48.3, Good 44, Fair 40.5, Poor below. Revisit at 40.
+ */
+export function vo2Word(vo2: number): { word: string; tone: "go" | "mid" | "stop" } {
+  if (vo2 >= 54) return { word: "Superior", tone: "go" };
+  if (vo2 >= 48.3) return { word: "Excellent", tone: "go" };
+  if (vo2 >= 44) return { word: "Good", tone: "go" };
+  return vo2 >= 40.5 ? { word: "Fair", tone: "mid" } : { word: "Poor", tone: "stop" };
+}

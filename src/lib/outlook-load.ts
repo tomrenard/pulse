@@ -20,7 +20,8 @@ const LOADS_FROM = "2023-01-01";
 export async function loadOutlook() {
   const date = today();
   const [wellness, events, activities, power, athlete, pace] = await Promise.all([
-    orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -7)}&newest=${date}`), []),
+    // 90 days: today's fitness, and eFTP now against 3 months ago.
+    orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -90)}&newest=${date}`), []),
     orNothing(
       intervals<PlanEvent[]>(
         `/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 365)}`,
@@ -58,10 +59,13 @@ export async function loadOutlook() {
   ]);
   const w = wellness.find((x) => x.id === date);
   // intervals.icu's eFTP from the newest day that has one, else the FTP you set.
-  const eftp = [...wellness]
-    .reverse()
-    .flatMap((x) => x.sportInfo ?? [])
-    .find((x) => x.type === "Ride" && x.eftp)?.eftp;
+  const eftpOf = (days: Wellness[]) =>
+    [...days]
+      .reverse()
+      .flatMap((x) => x.sportInfo ?? [])
+      .find((x) => x.type === "Ride" && x.eftp)?.eftp;
+  const eftp = eftpOf(wellness.filter((x) => x.id >= addDays(date, -7)));
+  const eftpBefore = eftpOf(wellness.filter((x) => x.id <= addDays(date, -83)));
   const rawFtp = eftp ?? athlete.sportSettings?.find((x) => x.types?.includes("Ride"))?.ftp;
   // eFTP comes with decimals; watts are shown whole everywhere.
   const ftp = rawFtp && Math.round(rawFtp);
@@ -92,6 +96,7 @@ export async function loadOutlook() {
     workouts: events.filter((e) => e.category === "WORKOUT"),
     races,
     ftp,
+    ftpBefore: eftpBefore && Math.round(eftpBefore),
     kg: athlete.icu_weight,
     rideVo2: cyclingVo2(at(p5?.secs, p5?.watts, 300), at(p5?.secs, p5?.watts_per_kg, 300)),
     recentSwim: {
@@ -102,6 +107,8 @@ export async function loadOutlook() {
       // Stale after 30 days without a qualifying run: then there's no "now".
       now: last && last.date >= addDays(date, -30) ? last.vdot : undefined,
       volume: volumeBefore(runs, date),
+      /** Run VO2max over time: the trend and "4 weeks ago" behind the predictions. */
+      series,
     },
   };
 }

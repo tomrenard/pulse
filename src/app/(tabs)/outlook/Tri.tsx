@@ -17,7 +17,14 @@ const range = (l: { low: number; high: number }) =>
 
 /** 21.0975 → 21.1: one decimal at most. */
 const km = (m: number) => Math.round(m / 100) / 10;
-export function Tri({ races }: { races: { name: string; split: Split }[] }) {
+export function Tri({
+  races,
+  open = false,
+}: {
+  races: { name: string; split: Split }[];
+  /** The race you entered: legs shown without a tap. */
+  open?: boolean;
+}) {
   return (
     <ul className="est">
       {races.map(({ name, split }) => {
@@ -31,7 +38,7 @@ export function Tri({ races }: { races: { name: string; split: Split }[] }) {
         const t = split.total;
         return (
           <li key={name}>
-            <details>
+            <details open={open}>
               <summary>
                 <span className="what">
                   <b>{name}</b>
