@@ -2,11 +2,12 @@ import Link from "next/link";
 import type { night } from "@/db/schema";
 import { addDays, weekday } from "@/lib/date";
 import { hmm } from "@/lib/format";
+import { type Trend, WEEK_ZONES, weekZone } from "@/lib/load";
 import { splitPlan } from "@/lib/plan";
-import { MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
+import { type HrvStatus, hrvStatus, MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
 import { hoursOf, sportOf } from "@/lib/volume";
-import { Delta, Dot, Glyph, hm, Module, SportChip } from "./ui";
+import { Glyph, hm, Module, SportChip } from "./ui";
 
 type Night = typeof night.$inferSelect & { tagged?: boolean };
 
@@ -255,6 +256,7 @@ export function HrvList({
   );
 }
 
+type Tone = "go" | "mid" | "stop";
 type Signal = {
   key: string;
   label: string;
@@ -262,34 +264,42 @@ type Signal = {
   color: string;
   icon: React.ReactNode;
   value: string;
-  state: "go" | "mid" | "stop";
-  delta?: React.ReactNode;
+  unit?: string;
+  state: Tone;
+  word: string;
+};
+
+const HRV_TONE: Record<HrvStatus, Tone> = {
+  Elevated: "go",
+  Normal: "go",
+  Reduced: "mid",
+  Low: "stop",
 };
 
 /**
- * The four readiness signals as glass tiles: value, a state dot, the change against your normal.
- * No words: the hero line says what matters, the tiles show where it comes from.
+ * The four signals as glass tiles, each with its state in a word (Normal, Low, Optimized…), so no
+ * number needs decoding. HRV is the 7-night mean; last night has its own row below.
  */
 export function Signals({
   hrv7,
   hrvNormal,
   last,
   rhr,
-  tsb,
+  trend,
 }: {
   hrv7?: number;
-  hrvNormal?: { low: number; high: number };
+  hrvNormal?: { lnMean: number; lnSd: number };
   last?: Night;
   rhr?: { low: number; high: number };
-  tsb?: number;
+  trend?: Trend;
 }) {
-  const hrvMid = hrvNormal && Math.sqrt(hrvNormal.low * hrvNormal.high);
-  const rhrMid = rhr && (rhr.low + rhr.high) / 2;
+  const hrv = hrv7 && hrvNormal ? hrvStatus(hrv7, hrvNormal) : undefined;
   const asleep = last?.asleepSecs;
+  const rhrHigh = Boolean(last?.rhr && rhr && last.rhr > rhr.high);
   const signals: Signal[] = [
     {
       key: "hrv",
-      label: "HRV",
+      label: "HRV 7 nights",
       href: "/health",
       color: "var(--hrv)",
       icon: (
@@ -298,8 +308,9 @@ export function Signals({
         </Glyph>
       ),
       value: hrv7 ? `${Math.round(hrv7)}` : "–",
-      state: !hrv7 || !hrvNormal ? "go" : hrv7 < hrvNormal.low ? "mid" : "go",
-      delta: hrv7 && hrvMid ? <Delta v={hrv7 - hrvMid} good="up" /> : null,
+      unit: "ms",
+      state: hrv ? HRV_TONE[hrv] : "go",
+      word: hrv ?? "Learning",
     },
     {
       key: "rhr",
@@ -312,8 +323,9 @@ export function Signals({
         </Glyph>
       ),
       value: last?.rhr ? `${last.rhr}` : "–",
-      state: last?.rhr && rhr && last.rhr > rhr.high ? "stop" : "go",
-      delta: last?.rhr && rhrMid ? <Delta v={last.rhr - rhrMid} good="down" /> : null,
+      unit: "bpm",
+      state: rhrHigh ? "stop" : "go",
+      word: !last?.rhr || !rhr ? "No data" : rhrHigh ? "High" : "Normal",
     },
     {
       key: "sleep",
@@ -327,11 +339,17 @@ export function Signals({
       ),
       value: asleep ? hmm(asleep) : "–",
       state: asleep && asleep < 0.85 * SLEEP_NEED_SECS ? "mid" : "go",
-      delta: asleep ? <Delta v={(asleep - SLEEP_NEED_SECS) / 60} good="up" unit="′" /> : null,
+      word: !asleep
+        ? "No data"
+        : asleep >= SLEEP_NEED_SECS
+          ? "Enough"
+          : asleep >= 0.85 * SLEEP_NEED_SECS
+            ? "A bit short"
+            : "Short",
     },
     {
-      key: "form",
-      label: "Form",
+      key: "load",
+      label: "Load trend",
       href: "/training",
       color: "var(--form)",
       icon: (
@@ -339,23 +357,150 @@ export function Signals({
           <path d="M4 16a8 8 0 0 1 16 0M12 16l4-5" />
         </Glyph>
       ),
-      value: tsb === undefined ? "–" : `${Math.round(tsb)}`,
-      state: tsb !== undefined && tsb < -30 ? "stop" : "go",
+      value: trend ? `${trend.pct}` : "–",
+      unit: "%",
+      state: trend?.state ?? "go",
+      word: trend?.zone ?? "No data",
     },
   ];
   return (
     <nav className="signals" aria-label="Readiness signals">
       {signals.map((s) => (
         <Link key={s.key} href={s.href} className="signal" style={{ color: s.color }}>
-          <span className="sr">{s.label}: </span>
           {s.icon}
-          <b className="num">{s.value}</b>
-          <span className="signal-foot">
-            <Dot state={s.state} />
-            {s.delta}
-          </span>
+          <b className="num">
+            {s.value}
+            {s.unit && s.value !== "–" && <small>{s.unit}</small>}
+          </b>
+          <span className={`signal-word ${s.state}`}>{s.word}</span>
+          <span className="signal-label">{s.label}</span>
         </Link>
       ))}
     </nav>
+  );
+}
+
+const HRV_MEANING: Record<HrvStatus, string> = {
+  Elevated: "Above your normal: well recovered.",
+  Normal: "In your normal range.",
+  Reduced: "A bit under your normal: common after a hard day.",
+  Low: "Well under your normal: alcohol, stress, a cold?",
+};
+
+/** Last night's HRV on your normal band, with the 7-night mean as a tick: one night vs the trend. */
+export function LastNight({
+  hrv,
+  hrv7,
+  normal,
+}: {
+  hrv?: number | null;
+  hrv7?: number;
+  normal?: { low: number; high: number; lnMean: number; lnSd: number };
+}) {
+  if (!hrv || !normal) return null;
+  const status = hrvStatus(hrv, normal);
+  const values = [hrv, hrv7 ?? hrv, normal.low, normal.high];
+  const lo = Math.min(...values) * 0.85;
+  const hi = Math.max(...values) * 1.1;
+  const pct = (v: number) => `${(((v - lo) / (hi - lo)) * 100).toFixed(1)}%`;
+  return (
+    <Module
+      title="HRV last night"
+      value={
+        <>
+          {Math.round(hrv)} ms <span className={`signal-word ${HRV_TONE[status]}`}>{status}</span>
+        </>
+      }
+      info={
+        <p>
+          The white dot is last night, the light band your normal ({Math.round(normal.low)}–
+          {Math.round(normal.high)} ms, 60 days), the tick your 7-night average
+          {hrv7 ? ` (${Math.round(hrv7)} ms)` : ""}. Readiness follows the 7-night average: one
+          night swings, a trend matters. Reduced is down to 1.5 SD under your average, Low below.
+        </p>
+      }
+    >
+      <div className="mod-b">
+        <span className="track night-track" aria-hidden="true">
+          <span
+            className="band"
+            style={{
+              left: pct(normal.low),
+              width: `calc(${pct(normal.high)} - ${pct(normal.low)})`,
+            }}
+          />
+          {hrv7 && <span className="tick" style={{ left: pct(hrv7) }} />}
+          <span className="dot" style={{ left: pct(hrv) }} />
+        </span>
+        <p className="mod-line">{HRV_MEANING[status]}</p>
+      </div>
+    </Module>
+  );
+}
+
+/**
+ * This week's load against a usual week (7 × fitness), COROS-style: the bar is done, the faint
+ * part what the plan adds, the zones behind it say what the week does to your fitness.
+ */
+export function WeekLoad({
+  done,
+  planned,
+  projected,
+  ctl,
+}: {
+  done: number;
+  planned?: number;
+  projected: number;
+  ctl?: number;
+}) {
+  if (!ctl) return null;
+  const usual = 7 * ctl;
+  const max = Math.max(usual * 1.8, projected * 1.05);
+  const pct = (v: number) => `${((Math.min(v, max) / max) * 100).toFixed(1)}%`;
+  const zone = weekZone(projected, ctl);
+  let from = 0;
+  return (
+    <Module
+      title="This week's load"
+      value={planned ? `${done} of ${planned}` : `${done}`}
+      info={
+        <p>
+          Training load done since Monday, then what the rest of the plan adds. The zones compare
+          the week with a usual week, 7 × your fitness ({Math.round(usual)}): under 0.8× you lose
+          fitness, 0.8–1× you keep it, 1–1.5× you build it safely, above 1.5× you overreach (COROS's
+          weekly load).
+        </p>
+      }
+    >
+      <div className="mod-b">
+        <span className="track week-track" aria-hidden="true">
+          {WEEK_ZONES.map((z, i) => {
+            const to = Math.min(z.upTo * usual, max);
+            const el = (
+              <span
+                key={z.label}
+                className={`wz wz${i}`}
+                style={{ left: pct(from), width: `calc(${pct(to)} - ${pct(from)})` }}
+              />
+            );
+            from = to;
+            return el;
+          })}
+          <span className="seg ahead" style={{ width: pct(projected) }} />
+          <span className="seg" style={{ width: pct(done) }} />
+        </span>
+        <span className="week-scale" aria-hidden="true">
+          {["Lose", "Keep", "Build", "Over"].map((w, i) => (
+            <span key={w} style={{ left: pct(([0, 0.8, 1, 1.5][i] ?? 0) * usual) }}>
+              {w}
+            </span>
+          ))}
+        </span>
+        <p className="mod-line">
+          {projected > done ? "With the plan: " : ""}
+          <b>{zone.label}</b>
+        </p>
+      </div>
+    </Module>
   );
 }

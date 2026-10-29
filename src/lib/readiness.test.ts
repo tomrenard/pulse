@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { midpointSpreadMin, type NightInput, readiness } from "./readiness.ts";
+import { hrvStatus, midpointSpreadMin, type NightInput, readiness } from "./readiness.ts";
 
 const day = (i: number) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10);
 /** 30 steady nights around 80 ms, RHR 52, 8 h 40 sleep; `tail` replaces the last nights. */
@@ -83,4 +83,12 @@ test("tagged nights stay out of the normal", () => {
   );
   expect(r.normal?.low).toBeGreaterThan(untagged.normal?.low ?? 0);
   expect(r.nights).toBe(20);
+});
+
+test("HRV status in COROS words: band, then Reduced to −1.5 SD, then Low", () => {
+  const n = { lnMean: Math.log(85), lnSd: 0.12 };
+  expect(hrvStatus(100, n)).toBe("Elevated");
+  expect(hrvStatus(85, n)).toBe("Normal");
+  expect(hrvStatus(75, n)).toBe("Reduced");
+  expect(hrvStatus(52, n)).toBe("Low");
 });

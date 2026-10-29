@@ -1,5 +1,5 @@
 import { today, weekday } from "@/lib/date";
-import { MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
+import { ACTION, hrvStatus, MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
 import { loadReview } from "@/lib/review-load";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
@@ -7,7 +7,7 @@ import { Hero } from "./Hero";
 import { Info } from "./Info";
 import { PushToggle } from "./PushToggle";
 import { Sky } from "./Sky";
-import { ComingUp, Signals, Workout } from "./Today";
+import { ComingUp, LastNight, Signals, WeekLoad, Workout } from "./Today";
 import { Glyph } from "./ui";
 import { Volume } from "./Volume";
 import { WeekReview } from "./WeekReview";
@@ -24,13 +24,21 @@ export default async function TodayPage() {
   ]);
   const { ready } = t;
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
-  // One line: what matters today. The signal tiles below show where it comes from.
+  // What to do, then why: the flagged signal, or last night's HRV when it dipped on its own.
   const flagged = ready.reasons.find((r) => r.flag)?.label;
+  const night =
+    t.lastNight?.hrv && ready.normal ? hrvStatus(t.lastNight.hrv, ready.normal) : undefined;
+  const why =
+    flagged ??
+    (night === "Low" || night === "Reduced"
+      ? "last night's HRV dipped, check tomorrow"
+      : undefined);
   const verdict = ready.stale
     ? "Too few nights this week to judge"
     : ready.state === "building"
       ? `Learning your normal · ${ready.nights} of ${MIN_NIGHTS} nights`
-      : (flagged ?? "All signals in range") + (ready.provisional ? " · early read" : "");
+      : [ACTION[ready.state], why].filter(Boolean).join(" · ") +
+        (ready.provisional ? " · early read" : "");
   const syncFailed = t.lastSync?.detail?.startsWith("error");
   return (
     <Sky state={ready.state}>
@@ -57,10 +65,12 @@ export default async function TodayPage() {
         hrvNormal={ready.normal}
         last={t.lastNight}
         rhr={rhrNormal(t.nights, t.date)}
-        tsb={t.tsb}
+        trend={t.trend}
       />
+      <LastNight hrv={t.lastNight?.hrv} hrv7={ready.hrv7} normal={ready.normal} />
       <Workout event={t.workout} notes={t.notes} ftp={t.ftp} />
       <ComingUp date={t.date} events={t.coming} ftp={t.ftp} />
+      <WeekLoad {...t.week} />
       {review && <WeekReview r={review} />}
       <Volume weeks={t.volume} planned={t.plannedHours} href="/training" />
       {/* The COROS card only when something needs you: not connected, or the sync broke. */}

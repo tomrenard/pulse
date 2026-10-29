@@ -50,13 +50,6 @@ export function Delta({ v, good, unit = "" }: { v?: number; good: "up" | "down";
   );
 }
 
-/** A state dot: go / mid / stop. */
-export const Dot = ({ state }: { state: "go" | "mid" | "stop" }) => (
-  <span className={`state-dot ${state}`}>
-    <span className="sr">{state === "go" ? "in range" : state === "mid" ? "watch" : "off"}</span>
-  </span>
-);
-
 /** A 24 × 24 line icon in the current colour (tab bar, signals, activities, badges). */
 export const Glyph = ({ children, width = 1.8 }: { children: React.ReactNode; width?: number }) => (
   <svg

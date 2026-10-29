@@ -49,6 +49,8 @@ export function hrvNormal(nights: NightInput[], date: string) {
   const s = sd(lns);
   return {
     nights: lns.length,
+    lnMean: m,
+    lnSd: s,
     lnLow: m - 0.5 * s,
     low: Math.exp(m - 0.5 * s),
     high: Math.exp(m + 0.5 * s),
@@ -83,7 +85,10 @@ export function readiness(nights: NightInput[], date: string, tsb?: number) {
   const base = {
     nights: normal.nights,
     provisional: normal.nights < SOLID_NIGHTS,
-    normal: normal.low && normal.high ? { low: normal.low, high: normal.high } : undefined,
+    normal:
+      normal.low && normal.high
+        ? { low: normal.low, high: normal.high, lnMean: normal.lnMean, lnSd: normal.lnSd }
+        : undefined,
     hrv7: week === undefined ? undefined : Math.exp(week),
   };
   if (normal.lnLow === undefined || week === undefined) {
@@ -125,6 +130,25 @@ export function readiness(nights: NightInput[], date: string, tsb?: number) {
     },
   ];
   return { ...base, state, stale: false, reasons };
+}
+
+/** What to do today, Garmin-style: a few words under the state. */
+export const ACTION: Record<State, string> = {
+  go: "Train as planned",
+  mid: "Keep it easy today",
+  stop: "Rest or go very easy",
+  building: "Train by feel",
+};
+
+export type HrvStatus = "Elevated" | "Normal" | "Reduced" | "Low";
+
+/**
+ * One HRV value (a night, or the 7-night mean) against your normal, in COROS's words.
+ * Normal = the band (mean ± 0.5 SD of ln HRV); Reduced down to mean − 1.5 SD; Low below that.
+ */
+export function hrvStatus(ms: number, n: { lnMean: number; lnSd: number }): HrvStatus {
+  const z = (Math.log(ms) - n.lnMean) / n.lnSd;
+  return z > 0.5 ? "Elevated" : z >= -0.5 ? "Normal" : z >= -1.5 ? "Reduced" : "Low";
 }
 
 export const WORD: Record<State, string> = {

@@ -739,21 +739,6 @@ ul.feed {
 .delta.worse {
   color: var(--mid);
 }
-.state-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-.state-dot.go {
-  background: var(--go);
-}
-.state-dot.mid {
-  background: var(--mid);
-}
-.state-dot.stop {
-  background: var(--stop);
-}
 
 /* Today: readiness signal tiles */
 .signals {
@@ -790,11 +775,96 @@ ul.feed {
   font-weight: 400;
   color: var(--fg);
 }
-.signal-foot {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 14px;
+.signal b small {
+  font-size: 12px;
+  margin-left: 1px;
+  color: var(--fg-2);
+}
+.signal-word {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.signal-word.go {
+  color: var(--go);
+}
+.signal-word.mid {
+  color: var(--mid);
+}
+.signal-word.stop {
+  color: var(--stop);
+}
+.signal-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--fg-3);
+  text-align: center;
+  line-height: 1.2;
+}
+.mod-line {
+  position: relative;
+  margin: 10px 0 0;
+  font-size: 15px;
+  color: var(--fg-2);
+}
+.mod-line b {
+  color: var(--fg);
+  font-weight: 600;
+}
+.night-track,
+.week-track {
+  display: block;
+  margin: 10px 0 2px;
+}
+.night-track .tick {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--hrv);
+}
+.week-track {
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.week-track .wz {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.wz1 {
+  background: rgba(255, 255, 255, 0.14);
+}
+.wz2 {
+  background: rgba(91, 227, 160, 0.32);
+}
+.wz3 {
+  background: rgba(255, 106, 106, 0.32);
+}
+.week-track .seg {
+  left: 0;
+  background: var(--form);
+  border-radius: 5px;
+}
+.week-track .seg.ahead {
+  background: repeating-linear-gradient(-45deg, var(--form) 0 3px, transparent 3px 6px);
+}
+.wz0 {
+  background: rgba(247, 197, 90, 0.28);
+}
+.week-scale {
+  position: relative;
+  display: block;
+  height: 14px;
+  font-size: 10px;
+  color: var(--fg-3);
+}
+.week-scale span {
+  position: absolute;
+  padding-left: 3px;
 }
 .hero .verdict {
   font-size: 17px;

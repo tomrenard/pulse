@@ -4,6 +4,7 @@ import { log } from "@/db/schema";
 import { corosConnected } from "@/lib/coros/auth";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
+import { intensityTrend } from "@/lib/load";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
 import { hoursOf, mondayOf, type VolumeActivity, WEEKS, weeklyVolume } from "@/lib/volume";
@@ -45,13 +46,16 @@ export function profile(steps: Step[] = [], ftp = 0): [number, number][] {
   });
 }
 
+const loadOf = (events: PlanEvent[]) =>
+  events.reduce((sum, e) => sum + (e.icu_training_load ?? 0), 0);
+
 /** Everything the Today screen shows, fetched in parallel. */
 export async function loadToday() {
   const date = today();
   const [{ nights, lastNight }, wellness, events, athlete, [lastSync], activities, connected] =
     await Promise.all([
       loadNights(date, 70),
-      orNothing(intervals<Wellness[]>(`/wellness?oldest=${date}&newest=${date}`), []),
+      orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -1)}&newest=${date}`), []),
       orNothing(
         intervals<PlanEvent[]>(`/events?oldest=${mondayOf(date)}&newest=${addDays(date, 6)}`),
         [],
@@ -75,6 +79,15 @@ export async function loadToday() {
     (e) => e.category === "WORKOUT" && e.start_date_local.slice(0, 10) <= addDays(monday, 6),
   );
   const covers = week.some((e) => e.start_date_local.slice(0, 10) <= addDays(monday, 2));
+  const doneLoad = activities
+    .filter((a) => a.start_date_local.slice(0, 10) >= monday)
+    .reduce((sum, a) => sum + (a.icu_training_load ?? 0), 0);
+  // Still to come: later sessions, and today's while nothing is done today.
+  const doneToday = activities.some((a) => a.start_date_local.startsWith(date));
+  const ahead = week.filter((e) => {
+    const day = e.start_date_local.slice(0, 10);
+    return day > date || (day === date && !doneToday);
+  });
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;
   return {
     date,
@@ -95,5 +108,12 @@ export async function loadToday() {
     volume: weeklyVolume(activities, date),
     corosConnected: connected,
     plannedHours: covers ? hoursOf(week) : undefined,
+    trend: intensityTrend(w?.ctl, w?.atl, wellness.find((x) => x.id === addDays(date, -1))?.atl),
+    week: {
+      done: Math.round(doneLoad),
+      planned: covers ? Math.round(loadOf(week)) : undefined,
+      projected: Math.round(doneLoad + loadOf(ahead)),
+      ctl: w?.ctl,
+    },
   };
 }
