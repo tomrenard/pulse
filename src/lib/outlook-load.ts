@@ -14,6 +14,9 @@ type Wellness = {
 };
 type PowerCurve = { secs?: number[]; watts?: number[]; watts_per_kg?: number[] };
 
+/** Fitness moves with each sync: cached briefly, so Records and Outlook share one fetch. */
+const FIVE_MIN = { next: { revalidate: 300 } };
+
 /** Loads and runs since 2023: heart rate on runs starts then (the potential model's history). */
 const LOADS_FROM = "2023-01-01";
 
@@ -21,7 +24,10 @@ export async function loadOutlook() {
   const date = today();
   const [wellness, events, activities, power, athlete, pace] = await Promise.all([
     // 90 days: today's fitness, and eFTP now against 3 months ago.
-    orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -90)}&newest=${date}`), []),
+    orNothing(
+      intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -90)}&newest=${date}`, FIVE_MIN),
+      [],
+    ),
     orNothing(
       intervals<PlanEvent[]>(
         `/events?oldest=${addDays(date, 1)}&newest=${addDays(date, 365)}`,
@@ -45,7 +51,7 @@ export async function loadOutlook() {
       intervals<{
         icu_weight?: number;
         sportSettings?: { types?: string[]; max_hr?: number; ftp?: number }[];
-      }>(""),
+      }>("", HOUR),
       {},
     ),
     // Bests from the same years as the heart-rate data: an older PB would inflate "now".

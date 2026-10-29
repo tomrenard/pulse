@@ -4,7 +4,7 @@ import { clock } from "@/lib/format";
 import { type Grade, rideGrade, runGrade } from "@/lib/level";
 import { loadOutlook } from "@/lib/outlook-load";
 import { freshTime } from "@/lib/potential";
-import { latestBests, loadRecords } from "@/lib/records";
+import { type Best, latestBests, loadRecords } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Glyph, Module } from "../ui";
@@ -132,6 +132,51 @@ function Latest({ r, date }: { r: Records; date: string }) {
   );
 }
 
+const TICKS = [
+  [5, "5 s"],
+  [60, "1 min"],
+  [300, "5 min"],
+  [1200, "20 min"],
+  [3600, "1 h"],
+] as const;
+
+/** PB with its date, then one more column (an estimate or a recent best). */
+function RecordTable({
+  rows,
+  fmt,
+  last,
+  lastValues,
+}: {
+  rows: Best[];
+  fmt: (v: number) => string;
+  last: string;
+  lastValues: (number | undefined)[];
+}) {
+  return (
+    <table className="rtable num">
+      <thead>
+        <tr>
+          <th />
+          <th>PB</th>
+          <th>{last}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((x, i) => (
+          <tr key={x.label}>
+            <th>{x.label}</th>
+            <td>
+              {x.values[0] ? fmt(x.values[0]) : "–"}
+              {x.dates[0] && <small>{monthYear(x.dates[0])}</small>}
+            </td>
+            <td>{lastValues[i] ? fmt(lastValues[i] as number) : "–"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** Power curve: all time, 12 months, 6 weeks, on a log time axis (5 s to 1 h), intervals.icu-style. */
 function PowerCurve({ curves }: { curves: Records["curves"] }) {
   const lines = [
@@ -147,7 +192,7 @@ function PowerCurve({ curves }: { curves: Records["curves"] }) {
   return (
     <figure className="pcurve">
       <svg viewBox="0 0 300 100" preserveAspectRatio="none" role="img" aria-label="Power curve">
-        {[60, 300, 1200, 3600].map((s) => (
+        {TICKS.slice(1).map(([s]) => (
           <line key={s} x1={x(s)} x2={x(s)} y1={0} y2={100} className="chart-grid" />
         ))}
         {lines.map(([key, , color]) =>
@@ -166,14 +211,8 @@ function PowerCurve({ curves }: { curves: Records["curves"] }) {
         )}
       </svg>
       <div className="pcurve-x" aria-hidden="true">
-        {[
-          [5, "5 s"],
-          [60, "1 min"],
-          [300, "5 min"],
-          [1200, "20 min"],
-          [3600, "1 h"],
-        ].map(([s, t]) => (
-          <span key={t} style={{ left: `${(x(s as number) / 300) * 100}%` }}>
+        {TICKS.map(([s, t]) => (
+          <span key={t} style={{ left: `${(x(s) / 300) * 100}%` }}>
             {t}
           </span>
         ))}
@@ -288,7 +327,7 @@ export default async function RecordsPage() {
           <>
             <p>
               Fastest stretch of any run at that distance (intervals.icu best efforts), so a 10 km
-              PB can sit inside a half marathon. 12 mo: your best of the last 12 months.
+              PB can sit inside a half marathon. Your 12-month bests are under Latest bests.
             </p>
             <p>
               Now: what you could run fresh today, estimated from your heart rate on recent runs
@@ -298,29 +337,7 @@ export default async function RecordsPage() {
         }
       >
         <div className="mod-b">
-          <table className="rtable num">
-            <thead>
-              <tr>
-                <th />
-                <th>PB</th>
-                <th>12 mo</th>
-                <th>Now ≈</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.run.map((x, i) => (
-                <tr key={x.label}>
-                  <th>{x.label}</th>
-                  <td>
-                    {x.values[0] ? clock(x.values[0]) : "–"}
-                    {x.dates[0] && <small>{monthYear(x.dates[0])}</small>}
-                  </td>
-                  <td>{x.values[1] ? clock(x.values[1]) : "–"}</td>
-                  <td>{est[i] ? clock(est[i] as number) : "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <RecordTable rows={r.run} fmt={(t) => clock(t)} last="Now ≈" lastValues={est} />
           {stale && <p className="mod-line">No hard run in 6 weeks: "now" comes from easy runs.</p>}
         </div>
       </Module>
@@ -329,37 +346,21 @@ export default async function RecordsPage() {
         title="Riding"
         info={
           <p>
-            Best average power for each duration (power data starts in 2025): all time, last 12
-            months and last 6 weeks. Lines close together mean you're near your best; a gap at short
-            durations usually means no hard efforts lately rather than lost fitness.
+            Best average power for each duration (power data starts in 2025): the curve shows all
+            time, last 12 months and last 6 weeks; the table your PB and your 6-week best. Lines
+            close together mean you're near your best; a gap at short durations usually means no
+            hard efforts lately rather than lost fitness.
           </p>
         }
       >
         <div className="mod-b">
           <PowerCurve curves={r.curves} />
-          <table className="rtable num">
-            <thead>
-              <tr>
-                <th />
-                <th>PB</th>
-                <th>12 mo</th>
-                <th>6 wk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.power.map((x) => (
-                <tr key={x.label}>
-                  <th>{x.label}</th>
-                  <td>
-                    {x.values[0] ?? "–"}
-                    {x.dates[0] && <small>{monthYear(x.dates[0])}</small>}
-                  </td>
-                  <td>{x.values[1] ?? "–"}</td>
-                  <td>{x.values[2] ?? "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <RecordTable
+            rows={r.power}
+            fmt={(w) => `${w}`}
+            last="6 wk"
+            lastValues={r.power.map((x) => x.values[2])}
+          />
         </div>
       </Module>
 

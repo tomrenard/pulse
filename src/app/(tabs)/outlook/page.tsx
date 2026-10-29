@@ -67,7 +67,7 @@ export default async function OutlookPage() {
   const series = o.potential.series;
   const ago = (days: number) => valueOn(series, addDays(o.date, -days))?.vdot;
   /** Predicted finish (s) for a race at a run fitness: runs and triathlons; rides need a route. */
-  const predict = (r: (typeof o.races)[number], vdot = v) => {
+  const predict = (r: (typeof o.races)[number], vdot: number | undefined) => {
     if (r.info.sport === "run" && r.info.metres && vdot)
       return freshTime(vdot, r.info.metres, o.potential.volume);
     const t = tris.find((x) => x.label === r.info.label)?.split.total;
@@ -76,11 +76,10 @@ export default async function OutlookPage() {
   const finish = (secs: number) => (secs < 3600 ? clock(secs) : hmm(secs));
   // Change over 4 weeks, for runs (a triathlon's swim and bike have no history here).
   const change = (r: (typeof o.races)[number]) => {
-    const now = predict(r);
+    const now = predict(r, v);
     const before = r.info.sport === "run" ? predict(r, ago(28)) : undefined;
     return now && before ? now - before : undefined;
   };
-  const runNow = v;
   // The last 12 months of run fitness, from the first run after any break of 6+ weeks.
   const year = series.filter((p) => p.date >= addDays(o.date, -365));
   const breakAt = year.reduce(
@@ -137,19 +136,17 @@ export default async function OutlookPage() {
       <Hero
         place="Outlook"
         word={
-          primary ? `${daysBetween(o.date, primary.start_date_local.slice(0, 10))} days` : "No race"
+          primary
+            ? ((d) => `${d} ${d === 1 ? "day" : "days"}`)(
+                daysBetween(o.date, primary.start_date_local.slice(0, 10)),
+              )
+            : "No race"
         }
         sub={primary?.name ?? "Add a race in intervals.icu"}
       >
         {primary && (
           <div className="hl num">
             {primary.info.label} <span>· {shortDate(primary.start_date_local)}</span>
-            {predict(primary) !== undefined && (
-              <>
-                {" "}
-                <span>·</span> ≈ {finish(predict(primary) as number)}
-              </>
-            )}
           </div>
         )}
       </Hero>
@@ -167,7 +164,7 @@ export default async function OutlookPage() {
         >
           <ul className="races">
             {others.map((r) => {
-              const t = predict(r);
+              const t = predict(r, v);
               const d = change(r);
               return (
                 <li key={r.id}>
@@ -182,7 +179,7 @@ export default async function OutlookPage() {
                     </small>
                   </span>
                   <span className="race-t num">
-                    {t ? finish(t) : <small>add route</small>}
+                    {t ? finish(t) : r.info.sport === "ride" ? <small>add route</small> : "–"}
                     {d !== undefined && Math.abs(d) >= 1 && (
                       <small className={d < 0 ? "better" : "worse"}>
                         {d < 0 ? "▼" : "▲"}
@@ -222,10 +219,10 @@ export default async function OutlookPage() {
         <div className="mod-b">
           <div className="stats num engine">
             <span>
-              <b>{runNow ? Math.round(runNow) : "–"}</b>
+              <b>{v ? Math.round(v) : "–"}</b>
               Run VO₂max
-              {runNow && <Word w={vo2Word(runNow)} />}
-              {runNow && run90 && <Trend d={runNow - run90} />}
+              {v && <Word w={vo2Word(v)} />}
+              {v && run90 && <Trend d={v - run90} />}
             </span>
             <span>
               <b>{o.rideVo2 ? Math.round(o.rideVo2) : "–"}</b>
@@ -290,7 +287,7 @@ export default async function OutlookPage() {
               <Line
                 points={recentSeries.map((p) => ({ date: p.date, value: p.vdot }))}
                 color="var(--go)"
-                label="Run VO2max over 12 months"
+                label="Run VO2max since your last comeback"
                 unit=""
               />
             </>

@@ -110,10 +110,10 @@ export async function loadRecords() {
         : [],
     );
   };
-  /** Level for one window (0 = PB, all time). */
-  const level = (w: number) => {
-    const runTimes = run.map((r) => ({ distance: r.distance, secs: r.values[w] }));
-    const curve = powerAt(WINDOWS[w]?.[0] ?? "");
+  /** Your PB level: all-time bests graded ("now" comes from the models, on the page). */
+  const pbLevel = () => {
+    const runTimes = run.map((r) => ({ distance: r.distance, secs: r.values[0] }));
+    const curve = powerAt("all");
     const wkg = (s: number) => at(curve?.secs, curve?.watts_per_kg, s);
     const runG = runGrade(runTimes);
     const rideG = rideGrade(ftpOf(wkg(1200), wkg(3600)));
@@ -131,7 +131,7 @@ export async function loadRecords() {
     run,
     power,
     curves: { all: curve("all"), year: curve("1y"), weeks: curve("42d") },
-    pb: level(0),
+    pb: pbLevel(),
     badges: badges(activities, today()),
   };
 }
