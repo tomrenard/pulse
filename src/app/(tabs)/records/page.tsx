@@ -1,15 +1,23 @@
 import type { Badge } from "@/lib/badges";
-import { clock as time } from "@/lib/format";
-import { loadRecords } from "@/lib/records";
+import { addDays, monthYear, shortDate } from "@/lib/date";
+import { clock } from "@/lib/format";
+import { type Grade, rideGrade, runGrade } from "@/lib/level";
+import { loadOutlook } from "@/lib/outlook-load";
+import { freshTime } from "@/lib/potential";
+import { latestBests, loadRecords } from "@/lib/records";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
 import { Glyph, Module } from "../ui";
-import { RecordBars } from "./RecordBars";
 
 type Records = Awaited<ReturnType<typeof loadRecords>>;
+type Now = { run?: Grade; ride?: Grade };
 
-/** Run and ride on one "% of world class" bar each, with the class marks and PB vs now. */
-function Level({ r }: { r: Records }) {
+/**
+ * Run and ride on one "% of world class" bar each: the fill is your PB level, the marker where the
+ * models put you now (run: VO2max from heart rate; ride: eFTP), not raw recent efforts, which are
+ * rarely all-out.
+ */
+function Level({ r, now }: { r: Records; now: Now }) {
   const rows = [
     ["run", "Run", "var(--go)"],
     ["ride", "Ride", "var(--form)"],
@@ -37,8 +45,8 @@ function Level({ r }: { r: Records }) {
             </p>
           )}
           <p>
-            The name and first %: your PB level. The white marker and “6 wk”: your best of the last
-            6 weeks.
+            The name and fill: your PB level. The white marker and “now”: what you could do today,
+            from your run VO₂max and your eFTP (Outlook's estimates).
           </p>
         </>
       }
@@ -46,7 +54,7 @@ function Level({ r }: { r: Records }) {
       <div className="mod-b levels">
         {rows.map(([key, label, color]) => {
           const best = r.pb[key];
-          const now = r.now[key];
+          const today = now[key];
           if (!best) return null;
           return (
             <div key={key} className="level-row">
@@ -55,7 +63,7 @@ function Level({ r }: { r: Records }) {
                 <b>{best.name}</b>
                 <span className="num">
                   {Math.round(best.pct)}%
-                  {now ? <small> · 6 wk {Math.round(now.pct)}%</small> : null}
+                  {today ? <small> · now {Math.round(today.pct)}%</small> : null}
                 </span>
               </div>
               <div className="level-bar" aria-hidden="true">
@@ -66,8 +74,11 @@ function Level({ r }: { r: Records }) {
                   className="fill"
                   style={{ width: `${Math.min(100, best.pct)}%`, background: color }}
                 />
-                {now && <i className="now" style={{ left: `${Math.min(100, now.pct)}%` }} />}
+                {today && <i className="now" style={{ left: `${Math.min(100, today.pct)}%` }} />}
               </div>
+              {today && today.name !== best.name && (
+                <small className="level-now">Now: {today.name}</small>
+              )}
             </div>
           );
         })}
@@ -79,6 +90,103 @@ function Level({ r }: { r: Records }) {
         </div>
       </div>
     </Module>
+  );
+}
+
+/** TrainingPeaks-style: what you set lately, a star for an all-time PB, a medal for a 12-month best. */
+function Latest({ r, date }: { r: Records; date: string }) {
+  const list = latestBests(
+    [
+      ...r.run.map((x) => ({ ...x, kind: "run" as const })),
+      ...r.power.map((x) => ({ ...x, kind: "ride" as const })),
+    ],
+    addDays(date, -365),
+  );
+  if (!list.length) return null;
+  return (
+    <Module
+      title="Latest bests"
+      info={
+        <p>
+          Your best of the last 12 months for each distance and duration, newest first. ★ also an
+          all-time PB, ● a 12-month best.
+        </p>
+      }
+    >
+      <ul className="why bests">
+        {list.map((b) => (
+          <li key={`${b.kind}${b.label}`}>
+            <span>
+              <i className={b.pb ? "star" : "medal"} aria-hidden="true">
+                {b.pb ? "★" : "●"}
+              </i>{" "}
+              {b.kind === "run" ? "Run" : "Ride"} {b.label}
+              <span className="sr">{b.pb ? ", all-time PB" : ", 12-month best"}</span>
+            </span>
+            <span className="num">{b.kind === "run" ? clock(b.value) : `${b.value} W`}</span>
+            <span className="num dim">{shortDate(b.date)}</span>
+          </li>
+        ))}
+      </ul>
+    </Module>
+  );
+}
+
+/** Power curve: all time, 12 months, 6 weeks, on a log time axis (5 s to 1 h), intervals.icu-style. */
+function PowerCurve({ curves }: { curves: Records["curves"] }) {
+  const lines = [
+    ["all", "All time", "rgba(255,255,255,.55)"],
+    ["year", "12 months", "var(--form)"],
+    ["weeks", "6 weeks", "var(--go)"],
+  ] as const;
+  const top = Math.max(1, ...curves.all.map((p) => p.watts)) * 1.05;
+  const x = (secs: number) =>
+    ((Math.log(secs) - Math.log(5)) / (Math.log(3600) - Math.log(5))) * 300;
+  const y = (w: number) => 100 - (w / top) * 100;
+  if (curves.all.length < 2) return null;
+  return (
+    <figure className="pcurve">
+      <svg viewBox="0 0 300 100" preserveAspectRatio="none" role="img" aria-label="Power curve">
+        {[60, 300, 1200, 3600].map((s) => (
+          <line key={s} x1={x(s)} x2={x(s)} y1={0} y2={100} className="chart-grid" />
+        ))}
+        {lines.map(([key, , color]) =>
+          curves[key].length > 1 ? (
+            <path
+              key={key}
+              d={curves[key]
+                .map((p, i) => `${i ? "L" : "M"}${x(p.secs).toFixed(1)} ${y(p.watts).toFixed(1)}`)
+                .join("")}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null,
+        )}
+      </svg>
+      <div className="pcurve-x" aria-hidden="true">
+        {[
+          [5, "5 s"],
+          [60, "1 min"],
+          [300, "5 min"],
+          [1200, "20 min"],
+          [3600, "1 h"],
+        ].map(([s, t]) => (
+          <span key={t} style={{ left: `${(x(s as number) / 300) * 100}%` }}>
+            {t}
+          </span>
+        ))}
+      </div>
+      <figcaption className="week-legend">
+        {lines.map(([key, name, color]) => (
+          <span key={key}>
+            <i style={{ background: color }} />
+            {name}
+          </span>
+        ))}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -114,7 +222,10 @@ function Badges({ list }: { list: Badge[] }) {
         <Glyph>{glyphFor(b.title)}</Glyph>
       </span>
       <b className="num">{b.value}</b>
-      <small>{b.title}</small>
+      <small>
+        {b.title}
+        {b.date && <i className="badge-date">{monthYear(b.date)}</i>}
+      </small>
       <span className="sr">
         {b.earned
           ? "earned"
@@ -147,40 +258,108 @@ function Badges({ list }: { list: Badge[] }) {
 }
 
 export default async function RecordsPage() {
-  const r = await loadRecords();
-  const pb5k = r.run[0]?.values[0];
+  const [r, o] = await Promise.all([loadRecords(), loadOutlook()]);
+  const five = r.run[0];
+  const v = o.potential.now;
+  // What you could run fresh today, per distance: Outlook's estimate.
+  const est = r.run.map((x) => (v ? freshTime(v, x.distance, o.potential.volume) : undefined));
+  const now: Now = {
+    run: runGrade(r.run.map((x, i) => ({ distance: x.distance, secs: est[i] }))),
+    ride: o.ftp && o.kg ? rideGrade(o.ftp / o.kg) : undefined,
+  };
+  // No hard run lately: the 6-week best 5 km is over 10 % slower than the estimate.
+  const recent5k = five?.values[2];
+  const stale = est[0] !== undefined && (!recent5k || recent5k > est[0] * 1.1);
   return (
     <Sky state="go">
-      <Hero place="Records" word={pb5k ? time(pb5k) : "–"} sub="5 km PB" />
+      <Hero
+        place="Records"
+        word={five?.values[0] ? clock(five.values[0]) : "–"}
+        sub={`5 km PB${five?.dates[0] ? ` · ${monthYear(five.dates[0])}` : ""}`}
+      />
 
-      <Level r={r} />
+      <Level r={r} now={now} />
+
+      <Latest r={r} date={o.date} />
 
       <Module
-        title="Run · PB vs now"
+        title="Running"
         info={
-          <p>
-            Fastest stretch of any run at that distance (intervals.icu best efforts), so a 10 km PB
-            can sit inside a half marathon. The filled bar is your best in the chosen window as a
-            share of PB speed.
-          </p>
+          <>
+            <p>
+              Fastest stretch of any run at that distance (intervals.icu best efforts), so a 10 km
+              PB can sit inside a half marathon. 12 mo: your best of the last 12 months.
+            </p>
+            <p>
+              Now: what you could run fresh today, estimated from your heart rate on recent runs
+              (Outlook's running estimate, ±5 %). An estimate, not a result.
+            </p>
+          </>
         }
       >
         <div className="mod-b">
-          <RecordBars rows={r.run} kind="time" color="var(--go)" />
+          <table className="rtable num">
+            <thead>
+              <tr>
+                <th />
+                <th>PB</th>
+                <th>12 mo</th>
+                <th>Now ≈</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.run.map((x, i) => (
+                <tr key={x.label}>
+                  <th>{x.label}</th>
+                  <td>
+                    {x.values[0] ? clock(x.values[0]) : "–"}
+                    {x.dates[0] && <small>{monthYear(x.dates[0])}</small>}
+                  </td>
+                  <td>{x.values[1] ? clock(x.values[1]) : "–"}</td>
+                  <td>{est[i] ? clock(est[i] as number) : "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {stale && <p className="mod-line">No hard run in 6 weeks: "now" comes from easy runs.</p>}
         </div>
       </Module>
 
       <Module
-        title="Ride · PB vs now"
+        title="Riding"
         info={
           <p>
-            Best average power for each duration (power data starts in 2025). The filled bar is your
-            best in the chosen window as a share of the PB.
+            Best average power for each duration (power data starts in 2025): all time, last 12
+            months and last 6 weeks. Lines close together mean you're near your best; a gap at short
+            durations usually means no hard efforts lately rather than lost fitness.
           </p>
         }
       >
         <div className="mod-b">
-          <RecordBars rows={r.power} kind="watts" color="var(--form)" />
+          <PowerCurve curves={r.curves} />
+          <table className="rtable num">
+            <thead>
+              <tr>
+                <th />
+                <th>PB</th>
+                <th>12 mo</th>
+                <th>6 wk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.power.map((x) => (
+                <tr key={x.label}>
+                  <th>{x.label}</th>
+                  <td>
+                    {x.values[0] ?? "–"}
+                    {x.dates[0] && <small>{monthYear(x.dates[0])}</small>}
+                  </td>
+                  <td>{x.values[1] ?? "–"}</td>
+                  <td>{x.values[2] ?? "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </Module>
 

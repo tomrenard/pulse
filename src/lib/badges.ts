@@ -3,6 +3,7 @@ import { hmm } from "./format.ts";
 import { mondayOf, sportOf } from "./volume.ts";
 
 export type BadgeActivity = {
+  id?: string;
   start_date_local: string;
   type?: string;
   distance?: number;
@@ -16,6 +17,8 @@ export type Badge = {
   detail: string;
   earned: boolean;
   progress?: number;
+  /** When it was set, for one-off records. */
+  date?: string;
 };
 
 const km = (m: number) => Math.round(m / 1000).toLocaleString("en-GB");
@@ -26,7 +29,11 @@ const km = (m: number) => Math.round(m / 1000).toLocaleString("en-GB");
  */
 export function badges(activities: BadgeActivity[], today: string, goalKm = 735): Badge[] {
   const rides = activities.filter((a) => sportOf(a.type) === "ride");
-  const longest = Math.max(0, ...rides.map((a) => a.distance ?? 0));
+  const longestRide = rides.reduce<BadgeActivity | undefined>(
+    (best, a) => ((a.distance ?? 0) > (best?.distance ?? 0) ? a : best),
+    undefined,
+  );
+  const longest = longestRide?.distance ?? 0;
   const weeks = new Map<string, { secs: number; count: number }>();
   const days = new Map<string, Set<string>>();
   for (const a of activities) {
@@ -61,12 +68,14 @@ export function badges(activities: BadgeActivity[], today: string, goalKm = 735)
       detail: `${Math.round((longest / 1000 / goalKm) * 100)} % of ${goalKm} km`,
       earned: longest >= 200_000,
       progress: Math.min(1, longest / 1000 / goalKm),
+      date: longestRide?.start_date_local.slice(0, 10),
     },
     {
       title: "Biggest week",
       value: hmm(big.secs),
       detail: bigMonday ? `week of ${bigMonday}` : "",
       earned: big.secs >= 15 * 3600,
+      date: bigMonday || undefined,
     },
     {
       title: "Centuries",

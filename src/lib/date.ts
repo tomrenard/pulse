@@ -18,3 +18,11 @@ export const shortDate = (date: string, long = false) =>
     timeZone: "UTC",
     ...(long && { weekday: "short", year: "numeric" }),
   });
+
+/** "Apr 2023": when a record was set. */
+export const monthYear = (date: string) =>
+  new Date(`${date.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });

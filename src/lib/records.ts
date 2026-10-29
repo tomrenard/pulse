@@ -4,11 +4,10 @@ import { intervals } from "@/lib/intervals";
 import { beatsText, ftpOf, rideBeats, rideGrade, runBeats, runGrade } from "@/lib/level";
 import { orNothing } from "@/lib/nights";
 
-/** Record windows, as intervals.icu curve ids: all time, 1 year, 6 months, 6 weeks. */
+/** Record windows, as intervals.icu curve ids: all time, 12 months, 6 weeks. */
 export const WINDOWS = [
   ["all", "PB"],
   ["1y", "12 mo"],
-  ["182d", "6 mo"],
   ["42d", "6 wk"],
 ] as const;
 
@@ -29,16 +28,40 @@ type PowerCurve = {
   id: string;
   secs?: number[];
   watts?: number[];
+  activity_id?: string[];
   /** W/kg at the weight recorded with each effort. */
   watts_per_kg?: number[];
 };
-export type PaceCurve = { id: string; distance?: number[]; values?: number[] };
+export type PaceCurve = {
+  id: string;
+  distance?: number[];
+  values?: number[];
+  activity_id?: string[];
+};
 
 export const HOUR = { next: { revalidate: 3600 } };
 const curves = WINDOWS.map(([id]) => id).join(",");
 
+export type Best = { label: string; values: (number | undefined)[]; dates: (string | undefined)[] };
+
+/**
+ * TrainingPeaks-style latest bests: each distance or duration whose 12-month best is recent,
+ * as an all-time PB (star) or a 12-month best (medal), newest first.
+ */
+export function latestBests(rows: (Best & { kind: "run" | "ride" })[], since: string, n = 5) {
+  return rows
+    .flatMap((r) => {
+      const [pb, year] = r.values;
+      const date = r.dates[1];
+      if (year === undefined || !date || date < since) return [];
+      return [{ label: r.label, kind: r.kind, value: year, date, pb: year === pb }];
+    })
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, n);
+}
+
 /** Best value at `x` in a curve: exact point, or undefined if the curve doesn't reach it. */
-export const at = (xs: number[] = [], ys: number[] = [], x: number) => {
+export const at = <T>(xs: number[] = [], ys: T[] = [], x: number) => {
   const i = xs.findIndex((v) => Math.abs(v - x) < 1);
   return i >= 0 ? ys[i] : undefined;
 };
@@ -56,7 +79,7 @@ export async function loadRecords() {
     ),
     orNothing(
       intervals<BadgeActivity[]>(
-        `/activities?oldest=2021-01-01&newest=${today()}&fields=start_date_local,type,distance,moving_time,total_elevation_gain`,
+        `/activities?oldest=2021-01-01&newest=${today()}&fields=id,start_date_local,type,distance,moving_time,total_elevation_gain`,
         HOUR,
       ),
       [],
@@ -64,16 +87,30 @@ export async function loadRecords() {
   ]);
   const powerAt = (id: string) => powerCurves.list.find((c) => c.id === id);
   const paceAt = (id: string) => paceCurves.list.find((c) => c.id === id);
+  // The day of each best: the activity behind that point of the curve.
+  const dayOf = new Map(activities.map((a) => [a.id, a.start_date_local.slice(0, 10)]));
+  const when = (id = "") => dayOf.get(id);
   const run = RUN_DISTANCES.map(([d, label]) => ({
     label,
     distance: d as number,
     values: WINDOWS.map(([id]) => at(paceAt(id)?.distance, paceAt(id)?.values, d)),
+    dates: WINDOWS.map(([id]) => when(at(paceAt(id)?.distance, paceAt(id)?.activity_id, d))),
   }));
   const power = POWER_SECS.map(([s, label]) => ({
     label,
     values: WINDOWS.map(([id]) => at(powerAt(id)?.secs, powerAt(id)?.watts, s)),
+    dates: WINDOWS.map(([id]) => when(at(powerAt(id)?.secs, powerAt(id)?.activity_id, s))),
   }));
-  /** Level for one window: 0 = PB (all time), 3 = last 6 weeks. */
+  // Power curves for the chart: 5 s to 1 h, about 40 points each, for all time, 12 months, 6 weeks.
+  const curve = (id: string) => {
+    const c = powerAt(id);
+    return (c?.secs ?? []).flatMap((x, i) =>
+      x >= 5 && x <= 3600 && c?.watts?.[i] && (i % 4 === 0 || POWER_SECS.some(([s]) => s === x))
+        ? [{ secs: x, watts: c.watts[i] as number }]
+        : [],
+    );
+  };
+  /** Level for one window (0 = PB, all time). */
   const level = (w: number) => {
     const runTimes = run.map((r) => ({ distance: r.distance, secs: r.values[w] }));
     const curve = powerAt(WINDOWS[w]?.[0] ?? "");
@@ -93,8 +130,8 @@ export async function loadRecords() {
   return {
     run,
     power,
+    curves: { all: curve("all"), year: curve("1y"), weeks: curve("42d") },
     pb: level(0),
-    now: level(3),
     badges: badges(activities, today()),
   };
 }
