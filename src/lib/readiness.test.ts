@@ -7,6 +7,7 @@ import {
   readiness,
   rhrWord,
   sleepWord,
+  tagEffects,
 } from "./readiness.ts";
 
 const day = (i: number) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10);
@@ -113,4 +114,14 @@ test("state words: sleep against the need, resting HR only high counts, bedtime 
   expect(bedtimeWord(20)?.word).toBe("Regular");
   expect(bedtimeWord(45)?.word).toBe("Varies");
   expect(bedtimeWord(90)?.tone).toBe("stop");
+});
+
+test("tag effects: shown from 5 tagged nights, against untagged nights", () => {
+  const ns = [
+    ...Array.from({ length: 20 }, () => ({ hrv: 85, tags: [] as string[] })),
+    ...Array.from({ length: 6 }, () => ({ hrv: 68, tags: ["alcohol"] })),
+    ...Array.from({ length: 3 }, () => ({ hrv: 80, tags: ["travel"] })),
+  ];
+  expect(tagEffects(ns)).toEqual([{ kind: "alcohol", n: 6, pct: -20, early: true }]);
+  expect(tagEffects(ns.slice(20))).toEqual([]);
 });

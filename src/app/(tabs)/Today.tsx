@@ -138,10 +138,13 @@ export function Workout({
   event,
   notes,
   ftp,
+  target,
 }: {
   event?: PlanEvent;
   notes: PlanEvent[];
   ftp: number;
+  /** Today's state says to adapt the session: easy only, or rest. */
+  target?: string;
 }) {
   if (!event && notes.length === 0) return null;
   return (
@@ -151,6 +154,7 @@ export function Workout({
         {event ? (
           <>
             <h2>{event.name ?? event.type}</h2>
+            {target && <p className="target">Today: {target}</p>}
             <div className="meta num">
               {event.moving_time ? (
                 <span>

@@ -36,7 +36,10 @@ function Level({ r }: { r: Records }) {
               approximate).
             </p>
           )}
-          <p>The white marker is where you are now (best of the last 6 weeks).</p>
+          <p>
+            The name and first %: your PB level. The white marker and “6 wk”: your best of the last
+            6 weeks.
+          </p>
         </>
       }
     >
@@ -51,7 +54,8 @@ function Level({ r }: { r: Records }) {
                 <span>{label}</span>
                 <b>{best.name}</b>
                 <span className="num">
-                  {Math.round(best.pct)}%{now ? <small> · now {Math.round(now.pct)}%</small> : null}
+                  {Math.round(best.pct)}%
+                  {now ? <small> · 6 wk {Math.round(now.pct)}%</small> : null}
                 </span>
               </div>
               <div className="level-bar" aria-hidden="true">

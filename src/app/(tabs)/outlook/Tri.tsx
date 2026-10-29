@@ -14,15 +14,18 @@ const range = (l: { low: number; high: number }) =>
     : `${hmm(l.low)}–${hmm(l.high)}`;
 
 /** One row per triathlon: finish time, tap for the legs. */
+
+/** 21.0975 → 21.1: one decimal at most. */
+const km = (m: number) => Math.round(m / 100) / 10;
 export function Tri({ races }: { races: { name: string; split: Split }[] }) {
   return (
     <ul className="est">
       {races.map(({ name, split }) => {
         const [swimM, bikeM, runM] = split.distances;
         const legs: [string, string, Leg][] = [
-          ["Swim", `${swimM / 1000} km`, split.swim],
-          ["Bike", `${bikeM / 1000} km`, split.bike],
-          ["Run", `${runM / 1000} km`, split.run],
+          ["Swim", `${km(swimM)} km`, split.swim],
+          ["Bike", `${km(bikeM)} km`, split.bike],
+          ["Run", `${km(runM)} km`, split.run],
           ["Transitions", "T1 + T2", split.transitions],
         ];
         const t = split.total;
@@ -33,7 +36,7 @@ export function Tri({ races }: { races: { name: string; split: Split }[] }) {
                 <span className="what">
                   <b>{name}</b>
                   <small>
-                    {swimM / 1000} · {bikeM / 1000} · {runM / 1000} km
+                    {km(swimM)} · {km(bikeM)} · {km(runM)} km
                   </small>
                 </span>
                 {t ? (

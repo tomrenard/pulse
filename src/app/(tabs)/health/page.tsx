@@ -6,6 +6,7 @@ import {
   HRV_TONE,
   hrvStatus,
   MIN_NIGHTS,
+  MIN_TAGGED,
   mean,
   midpointSpreadMin,
   rhrWord,
@@ -187,7 +188,8 @@ export default async function HealthPage() {
         info={
           <p>
             Tags apply to the night that ended this morning. Tagged nights stay out of your HRV
-            normal, so a few bad nights don't drag your baseline down.
+            normal, so a few bad nights don't drag your baseline down. From {MIN_TAGGED} tagged
+            nights, each tag shows its HRV against untagged nights (no adjustment for training).
           </p>
         }
       >
@@ -207,6 +209,24 @@ export default async function HealthPage() {
               </form>
             ))}
           </div>
+          {h.tagEffects.length > 0 && (
+            <ul className="why tag-effects">
+              {h.tagEffects.map((e) => (
+                <li key={e.kind}>
+                  <span>{e.kind[0]?.toUpperCase() + e.kind.slice(1)}</span>
+                  <span className="num dim">
+                    {e.n} nights{e.early ? " · early" : ""}
+                  </span>
+                  <span
+                    className={`signal-word ${e.pct <= -10 ? "stop" : e.pct < 0 ? "mid" : "go"}`}
+                  >
+                    HRV {e.pct > 0 ? "+" : ""}
+                    {e.pct} %
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Module>
 

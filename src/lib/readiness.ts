@@ -185,6 +185,60 @@ export function bedtimeWord(spreadMin?: number): Word | undefined {
   return spreadMin <= 60 ? { word: "Varies", tone: "mid" } : { word: "Irregular", tone: "stop" };
 }
 
+/**
+ * Today in one line: what to do, then why — the flagged signal, or last night's HRV when it
+ * dipped on its own (one night doesn't change the state, Garmin/Oura-style).
+ */
+export function verdict(r: ReturnType<typeof readiness>, lastHrv?: number | null) {
+  if (r.stale) return "Too few nights this week to judge";
+  if (r.state === "building") return `Learning your normal · ${r.nights} of ${MIN_NIGHTS} nights`;
+  return (
+    [ACTION[r.state], reasonOf(r, lastHrv)].filter(Boolean).join(" · ") +
+    (r.provisional ? " · early read" : "")
+  );
+}
+
+/** Why today's state: the flagged signal, or a lone low night. */
+export function reasonOf(r: ReturnType<typeof readiness>, lastHrv?: number | null) {
+  const night = lastHrv && r.normal ? hrvStatus(lastHrv, r.normal) : undefined;
+  return (
+    r.reasons.find((x) => x.flag)?.label ??
+    (night === "Low" || night === "Reduced" ? "last night's HRV dipped, check tomorrow" : undefined)
+  );
+}
+
+/** Tagged nights needed before a tag's effect shows; an early read until twice that. */
+export const MIN_TAGGED = 5;
+
+/**
+ * WHOOP-journal style: each tag's HRV (the tagged night) against untagged nights, as % of the
+ * geometric mean. Doesn't adjust for training: a tag that comes with hard days carries them too.
+ */
+export function tagEffects(nights: { hrv?: number | null; tags?: string[] }[]) {
+  const lnMean = (ns: typeof nights) => mean(ns.map((n) => Math.log(n.hrv as number)));
+  const withHrv = nights.filter((n) => n.hrv);
+  const clean = withHrv.filter((n) => !n.tags?.length);
+  if (clean.length < MIN_NIGHTS) return [];
+  const base = lnMean(clean);
+  const kinds = [...new Set(withHrv.flatMap((n) => n.tags ?? []))];
+  return kinds.flatMap((kind) => {
+    const hit = withHrv.filter((n) => n.tags?.includes(kind));
+    if (hit.length < MIN_TAGGED) return [];
+    const pct = Math.round(Math.expm1(lnMean(hit) - base) * 100);
+    return [{ kind, n: hit.length, pct, early: hit.length < 2 * MIN_TAGGED }];
+  });
+}
+
+/** WHOOP-style target for today's session from the state: as planned, easy only, or rest. */
+export function dayTarget(state: State, plannedLoad?: number) {
+  if (state === "mid")
+    return plannedLoad
+      ? `Easy only, up to ${Math.round(plannedLoad * 0.6)} load (Z1–2)`
+      : "Easy only (Z1–2)";
+  if (state === "stop") return "Rest, or 20–30 min very easy";
+  return undefined;
+}
+
 export const WORD: Record<State, string> = {
   go: "Ready",
   mid: "Go easy",

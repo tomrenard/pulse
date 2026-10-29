@@ -53,7 +53,7 @@ export function RecordBars({
               </span>
               <span className="rec-v num">
                 {show(pb)}
-                {pb && <small> → {show(now)}</small>}
+                {pb && <small>{now === undefined ? " · none yet" : ` → ${show(now)}`}</small>}
               </span>
             </li>
           );

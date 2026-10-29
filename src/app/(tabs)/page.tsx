@@ -1,5 +1,5 @@
 import { today, weekday } from "@/lib/date";
-import { ACTION, hrvStatus, MIN_NIGHTS, rhrNormal, WORD } from "@/lib/readiness";
+import { dayTarget, rhrNormal, verdict, WORD } from "@/lib/readiness";
 import { loadReview } from "@/lib/review-load";
 import { loadToday } from "@/lib/today";
 import { CorosCard } from "./CorosCard";
@@ -24,25 +24,11 @@ export default async function TodayPage() {
   ]);
   const { ready } = t;
   const place = `Today · ${new Date(`${t.date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
-  // What to do, then why: the flagged signal, or last night's HRV when it dipped on its own.
-  const flagged = ready.reasons.find((r) => r.flag)?.label;
-  const night =
-    t.lastNight?.hrv && ready.normal ? hrvStatus(t.lastNight.hrv, ready.normal) : undefined;
-  const why =
-    flagged ??
-    (night === "Low" || night === "Reduced"
-      ? "last night's HRV dipped, check tomorrow"
-      : undefined);
-  const verdict = ready.stale
-    ? "Too few nights this week to judge"
-    : ready.state === "building"
-      ? `Learning your normal · ${ready.nights} of ${MIN_NIGHTS} nights`
-      : [ACTION[ready.state], why].filter(Boolean).join(" · ") +
-        (ready.provisional ? " · early read" : "");
+  const verdictLine = verdict(ready, t.lastNight?.hrv);
   const syncFailed = t.lastSync?.detail?.startsWith("error");
   return (
     <Sky state={ready.state}>
-      <Hero place={place} word={WORD[ready.state]} sub={verdict} href="/health#why">
+      <Hero place={place} word={WORD[ready.state]} sub={verdictLine} href="/health#why">
         {t.lastSync && !syncFailed && <div className="synced">Synced {time(t.lastSync.at)}</div>}
         <div className="hero-tools">
           <Info
@@ -68,7 +54,12 @@ export default async function TodayPage() {
         trend={t.trend}
       />
       <LastNight hrv={t.lastNight?.hrv} hrv7={ready.hrv7} normal={ready.normal} />
-      <Workout event={t.workout} notes={t.notes} ftp={t.ftp} />
+      <Workout
+        event={t.workout}
+        notes={t.notes}
+        ftp={t.ftp}
+        target={dayTarget(ready.state, t.workout?.icu_training_load)}
+      />
       <ComingUp date={t.date} events={t.coming} ftp={t.ftp} />
       <WeekLoad {...t.week} />
       {review && <WeekReview r={review} />}

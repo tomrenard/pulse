@@ -2,7 +2,7 @@ import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { intensityTrend } from "@/lib/load";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
-import { readiness, rhrNormal } from "@/lib/readiness";
+import { readiness, rhrNormal, tagEffects } from "@/lib/readiness";
 import { dailyLoads, recoveryResponse } from "@/lib/recovery";
 
 /** All four lower overnight HRV for a night or two, so all stay out of the normal. */
@@ -43,6 +43,7 @@ export async function loadHealth() {
     rhr: rhrNormal(nights, date),
     weights,
     weight: weights.at(-1)?.value ?? athlete.icu_weight,
+    tagEffects: tagEffects(year),
     recovery: recoveryResponse(dailyLoads(activities, addDays(date, -400)), year),
   };
 }

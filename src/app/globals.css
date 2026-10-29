@@ -1109,9 +1109,8 @@ ul.races {
 .races .what b {
   font-size: 15px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 .prio {
   width: 26px;
@@ -1638,10 +1637,11 @@ ul.plan-steps {
 }
 
 /* Health: what's behind readiness */
-.why {
+.mod .why {
   list-style: none;
   margin: 0;
   padding: 0 16px 6px;
+  line-height: 1.3;
 }
 .why li {
   display: grid;
@@ -1745,4 +1745,14 @@ ul.plan-steps {
 }
 .week-legend .wz3 {
   background: var(--stop);
+}
+.wk .target {
+  position: relative;
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mid);
+}
+.mod .why.tag-effects {
+  padding: 8px 0 0;
 }

@@ -13,8 +13,8 @@ export async function loadNights(date: string, days: number) {
     db().select().from(night).where(gte(night.date, since)).orderBy(asc(night.date)),
     db().select().from(tag).where(gte(tag.date, since)),
   ]);
-  const tagged = new Set(tags.map((t) => t.date));
-  const nights = rows.map((n) => ({ ...n, tagged: tagged.has(n.date) }));
+  const kinds = (date: string) => tags.filter((t) => t.date === date).map((t) => t.kind);
+  const nights = rows.map((n) => ({ ...n, tagged: kinds(n.date).length > 0, tags: kinds(n.date) }));
   return {
     nights,
     // Last night = the night that ended this morning; missing until COROS syncs it.

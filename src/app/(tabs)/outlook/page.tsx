@@ -226,10 +226,17 @@ export default async function OutlookPage() {
       <Module
         title="Long ride"
         info={
-          <p>
-            Load a route (GPX) and pick a steady power: moving time from physics on each 100 m of
-            the route, plus your stops. Starts at 65 % of your FTP.
-          </p>
+          <>
+            <p>
+              Load a route (GPX) and pick a steady power: moving time from physics on each 100 m of
+              the route, plus your stops. Starts at 65 % of your FTP.
+            </p>
+            <p>
+              Physics only: gravel rolls at 0.008 with CdA 0.34, road at 0.004 with CdA 0.30; your
+              weight (or 68 kg) plus bike and bags; descents capped at 55 km/h. No wind, no fatigue:
+              over many hours you'll likely hold less power than you plan.
+            </p>
+          </>
         }
       >
         <div className="mod-b">
