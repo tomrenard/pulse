@@ -141,6 +141,12 @@ export const ACTION: Record<State, string> = {
 };
 
 export type HrvStatus = "Elevated" | "Normal" | "Reduced" | "Low";
+export const HRV_TONE: Record<HrvStatus, "go" | "mid" | "stop"> = {
+  Elevated: "go",
+  Normal: "go",
+  Reduced: "mid",
+  Low: "stop",
+};
 
 /**
  * One HRV value (a night, or the 7-night mean) against your normal, in COROS's words.
@@ -149,6 +155,34 @@ export type HrvStatus = "Elevated" | "Normal" | "Reduced" | "Low";
 export function hrvStatus(ms: number, n: { lnMean: number; lnSd: number }): HrvStatus {
   const z = (Math.log(ms) - n.lnMean) / n.lnSd;
   return z > 0.5 ? "Elevated" : z >= -0.5 ? "Normal" : z >= -1.5 ? "Reduced" : "Low";
+}
+
+type Word = { word: string; tone: "go" | "mid" | "stop" };
+
+/** Last night's sleep against the 8 h 30 need. */
+export function sleepWord(secs?: number | null): Word | undefined {
+  if (!secs) return undefined;
+  if (secs >= SLEEP_NEED_SECS) return { word: "Enough", tone: "go" };
+  return secs >= 0.85 * SLEEP_NEED_SECS
+    ? { word: "A bit short", tone: "go" }
+    : { word: "Short", tone: "mid" };
+}
+
+/** Resting HR against your normal; only high counts against you. */
+export function rhrWord(
+  rhr?: number | null,
+  normal?: { low: number; high: number },
+): Word | undefined {
+  if (!rhr || !normal) return undefined;
+  if (rhr > normal.high) return { word: "High", tone: "stop" };
+  return { word: rhr < normal.low ? "Low" : "Normal", tone: "go" };
+}
+
+/** Spread of the sleep midpoint over 7 nights: regular under 30 min, irregular over an hour. */
+export function bedtimeWord(spreadMin?: number): Word | undefined {
+  if (spreadMin === undefined) return undefined;
+  if (spreadMin <= 30) return { word: "Regular", tone: "go" };
+  return spreadMin <= 60 ? { word: "Varies", tone: "mid" } : { word: "Irregular", tone: "stop" };
 }
 
 export const WORD: Record<State, string> = {

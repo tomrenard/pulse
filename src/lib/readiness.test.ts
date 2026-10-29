@@ -1,5 +1,13 @@
 import { expect, test } from "vitest";
-import { hrvStatus, midpointSpreadMin, type NightInput, readiness } from "./readiness.ts";
+import {
+  bedtimeWord,
+  hrvStatus,
+  midpointSpreadMin,
+  type NightInput,
+  readiness,
+  rhrWord,
+  sleepWord,
+} from "./readiness.ts";
 
 const day = (i: number) => new Date(Date.UTC(2026, 9, 1 + i)).toISOString().slice(0, 10);
 /** 30 steady nights around 80 ms, RHR 52, 8 h 40 sleep; `tail` replaces the last nights. */
@@ -91,4 +99,18 @@ test("HRV status in COROS words: band, then Reduced to −1.5 SD, then Low", () 
   expect(hrvStatus(85, n)).toBe("Normal");
   expect(hrvStatus(75, n)).toBe("Reduced");
   expect(hrvStatus(52, n)).toBe("Low");
+});
+
+test("state words: sleep against the need, resting HR only high counts, bedtime spread", () => {
+  expect(sleepWord(9 * 3600)).toEqual({ word: "Enough", tone: "go" });
+  expect(sleepWord(7.5 * 3600)).toEqual({ word: "A bit short", tone: "go" });
+  expect(sleepWord(6 * 3600)?.tone).toBe("mid");
+  expect(sleepWord(null)).toBeUndefined();
+  const n = { low: 45, high: 52 };
+  expect(rhrWord(55, n)?.word).toBe("High");
+  expect(rhrWord(43, n)).toEqual({ word: "Low", tone: "go" });
+  expect(rhrWord(48, undefined)).toBeUndefined();
+  expect(bedtimeWord(20)?.word).toBe("Regular");
+  expect(bedtimeWord(45)?.word).toBe("Varies");
+  expect(bedtimeWord(90)?.tone).toBe("stop");
 });

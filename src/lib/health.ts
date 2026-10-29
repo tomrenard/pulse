@@ -1,5 +1,6 @@
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
+import { intensityTrend } from "@/lib/load";
 import { loadNights, orNothing, tsbOf } from "@/lib/nights";
 import { readiness, rhrNormal } from "@/lib/readiness";
 import { dailyLoads, recoveryResponse } from "@/lib/recovery";
@@ -30,13 +31,15 @@ export async function loadHealth() {
     ),
   ]);
   const nights = year.filter((n) => n.date > addDays(date, -90));
+  const w = wellness.find((x) => x.id === date);
   const weights = wellness.flatMap((w) => (w.weight ? [{ date: w.id, value: w.weight }] : []));
   return {
     date,
     nights,
     lastNight,
     lastTags,
-    ready: readiness(nights, date, tsbOf(wellness.find((w) => w.id === date))),
+    ready: readiness(nights, date, tsbOf(w)),
+    trend: intensityTrend(w?.ctl, w?.atl, wellness.find((x) => x.id === addDays(date, -1))?.atl),
     rhr: rhrNormal(nights, date),
     weights,
     weight: weights.at(-1)?.value ?? athlete.icu_weight,

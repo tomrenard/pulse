@@ -4,7 +4,7 @@ import { addDays, weekday } from "@/lib/date";
 import { hmm } from "@/lib/format";
 import { type Trend, WEEK_ZONES, weekZone } from "@/lib/load";
 import { splitPlan } from "@/lib/plan";
-import { type HrvStatus, hrvStatus, MIN_NIGHTS, SLEEP_NEED_SECS } from "@/lib/readiness";
+import { HRV_TONE, type HrvStatus, hrvStatus, rhrWord, sleepWord } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
 import { hoursOf, sportOf } from "@/lib/volume";
 import { Glyph, hm, Module, SportChip } from "./ui";
@@ -180,8 +180,8 @@ export function Workout({
   );
 }
 
-/** Weather's forecast list: per night the overnight HRV range, the night's average, your normal. */
-export function HrvList({
+/** Weather's forecast list: per night the overnight HRV range (dot = average) on your normal band. */
+export function HrvWeek({
   date,
   nights,
   normal,
@@ -203,56 +203,41 @@ export function HrvList({
   const pct = (v: number) => `${(((v - lo) / (hi - lo)) * 100).toFixed(1)}%`;
   const span = (a: number, b: number) => ({ left: pct(a), width: `calc(${pct(b)} - ${pct(a)})` });
   return (
-    <Module
-      title="HRV · 7 nights"
-      info={
-        <p>
-          Each bar is one night's heart-rate variability, low to high (10th–90th percentile); the
-          dot is the night's average. The light band is your normal
-          {normal
-            ? `, ${Math.round(normal.low)}–${Math.round(normal.high)} ms`
-            : ` (after ${MIN_NIGHTS} nights)`}
-          . One night swings; readiness uses the 7-night average. ● marks a tagged night.
-        </p>
-      }
-    >
-      <div className="hair" />
-      <ul className="rows">
-        {rows.map((n) => {
-          const hrv = n.hrv as number;
-          const below = normal ? hrv < normal.low : false;
-          return (
-            <li key={n.date} className="row num">
-              <span>
-                {n.date === date ? "Today" : weekday(n.date)}
-                {n.tagged && (
-                  <span className="tagged" role="img" aria-label="tagged night">
-                    ●
-                  </span>
-                )}
-              </span>
-              <span className="sr">
-                average {Math.round(hrv)} ms{below ? ", below normal" : ""}
-              </span>
-              <span className="track" aria-hidden="true">
-                {normal && <span className="band" style={span(normal.low, normal.high)} />}
-                <span
-                  className="seg"
-                  style={{
-                    ...span(n.hrvLow ?? hrv, n.hrvHigh ?? hrv),
-                    background: below
-                      ? "linear-gradient(90deg,var(--mid),#ff9a5a)"
-                      : "linear-gradient(90deg,var(--hrv),var(--go))",
-                  }}
-                />
-                <span className="dot" style={{ left: pct(hrv) }} />
-              </span>
-              <span className="hi">{Math.round(hrv)}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </Module>
+    <ul className="rows">
+      {rows.map((n) => {
+        const hrv = n.hrv as number;
+        const below = normal ? hrv < normal.low : false;
+        return (
+          <li key={n.date} className="row num">
+            <span>
+              {n.date === date ? "Today" : weekday(n.date)}
+              {n.tagged && (
+                <span className="tagged" role="img" aria-label="tagged night">
+                  ●
+                </span>
+              )}
+            </span>
+            <span className="sr">
+              average {Math.round(hrv)} ms{below ? ", below normal" : ""}
+            </span>
+            <span className="track" aria-hidden="true">
+              {normal && <span className="band" style={span(normal.low, normal.high)} />}
+              <span
+                className="seg"
+                style={{
+                  ...span(n.hrvLow ?? hrv, n.hrvHigh ?? hrv),
+                  background: below
+                    ? "linear-gradient(90deg,var(--mid),#ff9a5a)"
+                    : "linear-gradient(90deg,var(--hrv),var(--go))",
+                }}
+              />
+              <span className="dot" style={{ left: pct(hrv) }} />
+            </span>
+            <span className="hi">{Math.round(hrv)}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -267,13 +252,6 @@ type Signal = {
   unit?: string;
   state: Tone;
   word: string;
-};
-
-const HRV_TONE: Record<HrvStatus, Tone> = {
-  Elevated: "go",
-  Normal: "go",
-  Reduced: "mid",
-  Low: "stop",
 };
 
 /**
@@ -294,8 +272,8 @@ export function Signals({
   trend?: Trend;
 }) {
   const hrv = hrv7 && hrvNormal ? hrvStatus(hrv7, hrvNormal) : undefined;
-  const asleep = last?.asleepSecs;
-  const rhrHigh = Boolean(last?.rhr && rhr && last.rhr > rhr.high);
+  const sleep = sleepWord(last?.asleepSecs);
+  const rest = rhrWord(last?.rhr, rhr);
   const signals: Signal[] = [
     {
       key: "hrv",
@@ -324,8 +302,8 @@ export function Signals({
       ),
       value: last?.rhr ? `${last.rhr}` : "–",
       unit: "bpm",
-      state: rhrHigh ? "stop" : "go",
-      word: !last?.rhr || !rhr ? "No data" : rhrHigh ? "High" : "Normal",
+      state: rest?.tone ?? "go",
+      word: rest?.word ?? "No data",
     },
     {
       key: "sleep",
@@ -337,15 +315,9 @@ export function Signals({
           <path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z" />
         </Glyph>
       ),
-      value: asleep ? hmm(asleep) : "–",
-      state: asleep && asleep < 0.85 * SLEEP_NEED_SECS ? "mid" : "go",
-      word: !asleep
-        ? "No data"
-        : asleep >= SLEEP_NEED_SECS
-          ? "Enough"
-          : asleep >= 0.85 * SLEEP_NEED_SECS
-            ? "A bit short"
-            : "Short",
+      value: last?.asleepSecs ? hmm(last.asleepSecs) : "–",
+      state: sleep?.tone ?? "go",
+      word: sleep?.word ?? "No data",
     },
     {
       key: "load",
@@ -387,7 +359,47 @@ const HRV_MEANING: Record<HrvStatus, string> = {
   Low: "Well under your normal: alcohol, stress, a cold?",
 };
 
-/** Last night's HRV on your normal band, with the 7-night mean as a tick: one night vs the trend. */
+type Normal = { low: number; high: number; lnMean: number; lnSd: number };
+
+/** Last night's HRV on your normal band, the 7-night mean as a tick, and what it means. */
+export function NightBar({ hrv, hrv7, normal }: { hrv: number; hrv7?: number; normal: Normal }) {
+  const values = [hrv, hrv7 ?? hrv, normal.low, normal.high];
+  const lo = Math.min(...values) * 0.85;
+  const hi = Math.max(...values) * 1.1;
+  const pct = (v: number) => `${(((v - lo) / (hi - lo)) * 100).toFixed(1)}%`;
+  return (
+    <>
+      <span className="track night-track" aria-hidden="true">
+        <span
+          className="band"
+          style={{ left: pct(normal.low), width: `calc(${pct(normal.high)} - ${pct(normal.low)})` }}
+        />
+        {hrv7 && <span className="tick" style={{ left: pct(hrv7) }} />}
+        <span className="dot" style={{ left: pct(hrv) }} />
+      </span>
+      <p className="mod-line">{HRV_MEANING[hrvStatus(hrv, normal)]}</p>
+    </>
+  );
+}
+
+export const nightInfo = (normal: Normal, hrv7?: number) => (
+  <p>
+    The white dot is last night, the light band your normal ({Math.round(normal.low)}–
+    {Math.round(normal.high)} ms, 60 days), the tick your 7-night average
+    {hrv7 ? ` (${Math.round(hrv7)} ms)` : ""}. Readiness follows the 7-night average: one night
+    swings, a trend matters. Reduced is down to 1.5 SD under your average, Low below.
+  </p>
+);
+
+export const HrvWord = ({ hrv, normal }: { hrv: number; normal: Normal }) => {
+  const status = hrvStatus(hrv, normal);
+  return (
+    <>
+      {Math.round(hrv)} ms <span className={`signal-word ${HRV_TONE[status]}`}>{status}</span>
+    </>
+  );
+};
+
 export function LastNight({
   hrv,
   hrv7,
@@ -395,44 +407,17 @@ export function LastNight({
 }: {
   hrv?: number | null;
   hrv7?: number;
-  normal?: { low: number; high: number; lnMean: number; lnSd: number };
+  normal?: Normal;
 }) {
   if (!hrv || !normal) return null;
-  const status = hrvStatus(hrv, normal);
-  const values = [hrv, hrv7 ?? hrv, normal.low, normal.high];
-  const lo = Math.min(...values) * 0.85;
-  const hi = Math.max(...values) * 1.1;
-  const pct = (v: number) => `${(((v - lo) / (hi - lo)) * 100).toFixed(1)}%`;
   return (
     <Module
       title="HRV last night"
-      value={
-        <>
-          {Math.round(hrv)} ms <span className={`signal-word ${HRV_TONE[status]}`}>{status}</span>
-        </>
-      }
-      info={
-        <p>
-          The white dot is last night, the light band your normal ({Math.round(normal.low)}–
-          {Math.round(normal.high)} ms, 60 days), the tick your 7-night average
-          {hrv7 ? ` (${Math.round(hrv7)} ms)` : ""}. Readiness follows the 7-night average: one
-          night swings, a trend matters. Reduced is down to 1.5 SD under your average, Low below.
-        </p>
-      }
+      value={<HrvWord hrv={hrv} normal={normal} />}
+      info={nightInfo(normal, hrv7)}
     >
       <div className="mod-b">
-        <span className="track night-track" aria-hidden="true">
-          <span
-            className="band"
-            style={{
-              left: pct(normal.low),
-              width: `calc(${pct(normal.high)} - ${pct(normal.low)})`,
-            }}
-          />
-          {hrv7 && <span className="tick" style={{ left: pct(hrv7) }} />}
-          <span className="dot" style={{ left: pct(hrv) }} />
-        </span>
-        <p className="mod-line">{HRV_MEANING[status]}</p>
+        <NightBar hrv={hrv} hrv7={hrv7} normal={normal} />
       </div>
     </Module>
   );

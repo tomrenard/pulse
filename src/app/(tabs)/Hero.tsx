@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 /** Weather-style hero that fades into a compact header as the page scrolls. */
@@ -7,11 +8,14 @@ export function Hero({
   place,
   word,
   sub,
+  href,
   children,
 }: {
   place: string;
   word: string;
   sub: string;
+  /** Where the verdict leads: what's behind it. */
+  href?: string;
   children?: React.ReactNode;
 }) {
   const hero = useRef<HTMLElement>(null);
@@ -40,7 +44,13 @@ export function Hero({
       <section className="hero" ref={hero} aria-label="Readiness">
         <div className="place">{place}</div>
         <div className="big">{word}</div>
-        <div className="verdict">{sub}</div>
+        {href ? (
+          <Link href={href} className="verdict">
+            {sub}
+          </Link>
+        ) : (
+          <div className="verdict">{sub}</div>
+        )}
         {children}
       </section>
     </>

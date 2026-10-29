@@ -42,7 +42,7 @@ export default async function TodayPage() {
   const syncFailed = t.lastSync?.detail?.startsWith("error");
   return (
     <Sky state={ready.state}>
-      <Hero place={place} word={WORD[ready.state]} sub={verdict}>
+      <Hero place={place} word={WORD[ready.state]} sub={verdict} href="/health#why">
         {t.lastSync && !syncFailed && <div className="synced">Synced {time(t.lastSync.at)}</div>}
         <div className="hero-tools">
           <Info

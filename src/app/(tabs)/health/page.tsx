@@ -1,13 +1,24 @@
 import { addDays } from "@/lib/date";
 import { hmm, signed } from "@/lib/format";
 import { loadHealth, TAGS } from "@/lib/health";
-import { MIN_NIGHTS, mean, midpointSpreadMin, SLEEP_NEED_SECS } from "@/lib/readiness";
+import {
+  bedtimeWord,
+  HRV_TONE,
+  hrvStatus,
+  MIN_NIGHTS,
+  mean,
+  midpointSpreadMin,
+  rhrWord,
+  SLEEP_NEED_SECS,
+  sleepWord,
+} from "@/lib/readiness";
 import { MIN_EVENTS, type recoveryResponse, SOLID_NIGHTS } from "@/lib/recovery";
 import { Bars, Line } from "../charts";
 import { Hero } from "../Hero";
 import { Sky } from "../Sky";
-import { HrvList } from "../Today";
+import { HrvWeek, NightBar, nightInfo } from "../Today";
 import { Delta, Module } from "../ui";
+import { Views } from "../Views";
 import { saveWeight, toggleTag } from "./actions";
 
 const avg = (xs: (number | null | undefined)[]) => {
@@ -17,14 +28,14 @@ const avg = (xs: (number | null | undefined)[]) => {
 const STRESS_WORD = (v: number) =>
   v <= 25 ? "relaxed" : v <= 50 ? "low" : v <= 75 ? "medium" : "high";
 
-/** Your HRV after big days: learning ring until 5 big days, then the dip night by night. */
+/** Your HRV after big days, night by night. Hidden until 5 big days: an empty card says nothing. */
 function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
-  const ready = r.events >= MIN_EVENTS && r.nights !== undefined;
+  if (r.events < MIN_EVENTS || r.nights === undefined) return null;
   const nights = (n: number) => (n > r.profile.length ? `${r.profile.length}+` : String(n));
   return (
     <Module
       title="Recovery response"
-      value={ready ? `≈ ${nights(r.nights as number)} nights` : `${r.events} of ${MIN_EVENTS}`}
+      value={`≈ ${nights(r.nights as number)} nights`}
       info={
         <p>
           Big days are your top 10 % by training load ({r.bigLoad ? Math.round(r.bigLoad) : "–"}+),
@@ -35,32 +46,43 @@ function Recovery({ r }: { r: ReturnType<typeof recoveryResponse> }) {
       }
     >
       <div className="mod-b">
-        {ready ? (
-          <>
-            <div className="stats num">
-              {r.profile.map((p, k) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
-                <span key={k}>
-                  <b>{signed(p, " %")}</b>
-                  night {k + 1}
-                </span>
-              ))}
-            </div>
-            <div className="caption">
-              HRV after a big day, against the week before
-              {r.hrvNights < SOLID_NIGHTS ? " · early read" : ""}
-            </div>
-          </>
-        ) : (
-          <div className="recovery">
-            <span
-              className="ring"
-              style={{ "--p": Math.min(1, r.events / MIN_EVENTS) } as React.CSSProperties}
-            />
-            <span className="caption">Learning how your HRV reacts to big days</span>
-          </div>
-        )}
+        <div className="stats num">
+          {r.profile.map((p, k) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed nights 1–4 after
+            <span key={k}>
+              <b>{signed(p, " %")}</b>
+              night {k + 1}
+            </span>
+          ))}
+        </div>
+        <div className="caption">
+          HRV after a big day, against the week before
+          {r.hrvNights < SOLID_NIGHTS ? " · early read" : ""}
+        </div>
       </div>
+    </Module>
+  );
+}
+
+type Row = {
+  label: string;
+  value: string | React.ReactNode;
+  word?: { word: string; tone: string };
+};
+
+/** Oura's contributors: what sits behind today's readiness, one line each with its state word. */
+function Why({ rows }: { rows: Row[] }) {
+  return (
+    <Module title="What's behind it">
+      <ul className="why" id="why">
+        {rows.map((r) => (
+          <li key={r.label}>
+            <span>{r.label}</span>
+            <span className="num">{r.value}</span>
+            <span className={`signal-word ${r.word?.tone ?? ""}`}>{r.word?.word ?? "No data"}</span>
+          </li>
+        ))}
+      </ul>
     </Module>
   );
 }
@@ -73,15 +95,11 @@ export default async function HealthPage() {
   const spread = midpointSpreadMin(recent(7));
   const series = (days: number, key: "hrv" | "rhr" | "stress" | "asleepSecs") =>
     recent(days).flatMap((n) => (n[key] == null ? [] : [{ date: n.date, value: n[key] }]));
-  const hrvMid = ready.normal && Math.sqrt(ready.normal.low * ready.normal.high);
-  const rhrMid = h.rhr && (h.rhr.low + h.rhr.high) / 2;
   const sub = !ready.normal
     ? `Learning your normal · ${ready.nights} of ${MIN_NIGHTS} nights`
     : !ready.hrv7
       ? "Too few nights this week"
-      : ready.hrv7 < ready.normal.low
-        ? "7-night HRV below normal"
-        : "7-night HRV in normal";
+      : `7-night HRV · ${hrvStatus(ready.hrv7, ready.normal)}`;
 
   return (
     <Sky state={ready.state}>
@@ -90,6 +108,79 @@ export default async function HealthPage() {
         word={ready.hrv7 ? `${Math.round(ready.hrv7)} ms` : "–"}
         sub={sub}
       ></Hero>
+
+      <Why
+        rows={[
+          {
+            label: "HRV last night",
+            value: last?.hrv ? `${Math.round(last.hrv)} ms` : "–",
+            word:
+              last?.hrv && ready.normal
+                ? (() => {
+                    const word = hrvStatus(last.hrv, ready.normal);
+                    return { word, tone: HRV_TONE[word] };
+                  })()
+                : undefined,
+          },
+          {
+            label: "Resting HR",
+            value: last?.rhr ? `${last.rhr} bpm` : "–",
+            word: rhrWord(last?.rhr, h.rhr),
+          },
+          {
+            label: "Sleep",
+            value: last?.asleepSecs ? hmm(last.asleepSecs) : "–",
+            word: sleepWord(last?.asleepSecs),
+          },
+          {
+            label: "Bedtime, 7 nights",
+            value: spread !== undefined ? `±${spread} min` : "–",
+            word: bedtimeWord(spread),
+          },
+          {
+            label: "Load trend",
+            value: h.trend ? `${h.trend.pct} %` : "–",
+            word: h.trend && { word: h.trend.zone, tone: h.trend.state },
+          },
+        ]}
+      />
+
+      <Module
+        title="HRV"
+        info={
+          ready.normal ? (
+            <>
+              {nightInfo(ready.normal, ready.hrv7)}
+              <p>
+                7 nights: each bar is one night low to high (10th–90th percentile), the dot its
+                average. ● marks a tagged night. 2 months: the nightly average on your normal band.
+              </p>
+            </>
+          ) : (
+            <p>Overnight heart-rate variability. Your normal appears after {MIN_NIGHTS} nights.</p>
+          )
+        }
+      >
+        <div className="mod-b">
+          <Views labels={["Last night", "7 nights", "2 months"]}>
+            {last?.hrv && ready.normal ? (
+              <NightBar hrv={last.hrv} hrv7={ready.hrv7} normal={ready.normal} />
+            ) : (
+              <p className="dim">No HRV last night.</p>
+            )}
+            <HrvWeek date={h.date} nights={nights} normal={ready.normal} />
+            <Line
+              points={series(60, "hrv")}
+              color="var(--hrv)"
+              band={ready.normal}
+              label="Overnight HRV"
+              unit="ms"
+            />
+          </Views>
+        </div>
+      </Module>
+
+      <Recovery r={h.recovery} />
 
       <Module
         title="Tag last night"
@@ -175,49 +266,7 @@ export default async function HealthPage() {
       </Module>
 
       <Module
-        title="HRV · 60 nights"
-        value={
-          last?.hrv ? (
-            <>
-              {Math.round(last.hrv)} ms{" "}
-              <Delta v={hrvMid ? last.hrv - hrvMid : undefined} good="up" />
-            </>
-          ) : undefined
-        }
-        info={
-          <p>
-            Overnight heart-rate variability. The band is your normal
-            {ready.normal
-              ? ` (${Math.round(ready.normal.low)}–${Math.round(ready.normal.high)} ms)`
-              : ", after 14 nights"}
-            . Single nights swing; readiness uses the 7-night average.
-          </p>
-        }
-      >
-        <div className="mod-b">
-          <Line
-            points={series(60, "hrv")}
-            color="var(--hrv)"
-            band={ready.normal}
-            label="Overnight HRV"
-            unit="ms"
-          />
-        </div>
-      </Module>
-
-      <Recovery r={h.recovery} />
-
-      <HrvList date={h.date} nights={nights} normal={ready.normal} />
-
-      <Module
         title="Resting HR · 60 nights"
-        value={
-          last?.rhr ? (
-            <>
-              {last.rhr} bpm <Delta v={rhrMid ? last.rhr - rhrMid : undefined} good="down" />
-            </>
-          ) : undefined
-        }
         info={
           <p>
             Your lowest heart rate while asleep each night
