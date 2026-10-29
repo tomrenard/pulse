@@ -24,16 +24,18 @@ export function morningMessage(t: Awaited<ReturnType<typeof loadToday>>) {
     : "No workout planned";
   const target = dayTarget(t.ready.state, t.workout?.icu_training_load);
   const hrv = t.lastNight?.hrv;
+  // iOS shows the title on one line: state and action there, the why leads the body.
+  const building = t.ready.state === "building" || t.ready.stale;
+  const why = building ? verdict(t.ready, hrv) : reasonOf(t.ready, hrv);
+  // A lone low night is already the why: its number would only repeat it.
+  const nightIsWhy = why?.startsWith("last night's HRV");
   const facts = [
-    hrv && t.ready.normal
+    hrv && t.ready.normal && !nightIsWhy
       ? `HRV ${Math.round(hrv)} ms, ${hrvStatus(hrv, t.ready.normal).toLowerCase()}`
       : undefined,
     t.lastNight?.asleepSecs ? `slept ${hm(t.lastNight.asleepSecs)}` : undefined,
     t.week.planned ? `load ${t.week.done} of ${t.week.planned}` : undefined,
   ].filter(Boolean);
-  // iOS shows the title on one line: state and action there, the why leads the body.
-  const building = t.ready.state === "building" || t.ready.stale;
-  const why = building ? verdict(t.ready, hrv) : reasonOf(t.ready, hrv);
   return {
     title: building ? WORD[t.ready.state] : `${WORD[t.ready.state]} · ${ACTION[t.ready.state]}`,
     body: [

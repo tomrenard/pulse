@@ -1695,16 +1695,20 @@ ul.plan-steps {
   border-radius: 4px 4px 2px 2px;
   background: rgba(255, 255, 255, 0.25);
 }
-.load-weeks .wz0 {
+.load-weeks .wz0,
+.week-legend .wz0 {
   background: var(--mid);
 }
-.load-weeks .wz1 {
+.load-weeks .wz1,
+.week-legend .wz1 {
   background: rgba(255, 255, 255, 0.55);
 }
-.load-weeks .wz2 {
+.load-weeks .wz2,
+.week-legend .wz2 {
   background: var(--go);
 }
-.load-weeks .wz3 {
+.load-weeks .wz3,
+.week-legend .wz3 {
   background: var(--stop);
 }
 .load-weeks .now i {
@@ -1733,18 +1737,6 @@ ul.plan-steps {
   width: 9px;
   height: 9px;
   border-radius: 2px;
-}
-.week-legend .wz0 {
-  background: var(--mid);
-}
-.week-legend .wz1 {
-  background: rgba(255, 255, 255, 0.55);
-}
-.week-legend .wz2 {
-  background: var(--go);
-}
-.week-legend .wz3 {
-  background: var(--stop);
 }
 .wk .target {
   position: relative;

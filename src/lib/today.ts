@@ -4,8 +4,8 @@ import { log } from "@/db/schema";
 import { corosConnected } from "@/lib/coros/auth";
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
-import { intensityTrend } from "@/lib/load";
-import { loadNights, orNothing, tsbOf } from "@/lib/nights";
+import { intensityTrend, projectedLoad } from "@/lib/load";
+import { loadNights, orNothing } from "@/lib/nights";
 import { readiness } from "@/lib/readiness";
 import {
   hoursOf,
@@ -62,7 +62,10 @@ export async function loadToday() {
   const [{ nights, lastNight }, wellness, events, athlete, [lastSync], activities, connected] =
     await Promise.all([
       loadNights(date, 70),
-      orNothing(intervals<Wellness[]>(`/wellness?oldest=${addDays(date, -1)}&newest=${date}`), []),
+      orNothing(
+        intervals<Wellness[]>(`/wellness?oldest=${addDays(mondayOf(date), -1)}&newest=${date}`),
+        [],
+      ),
       orNothing(
         intervals<PlanEvent[]>(`/events?oldest=${mondayOf(date)}&newest=${addDays(date, 6)}`),
         [],
@@ -78,25 +81,20 @@ export async function loadToday() {
       corosConnected(),
     ]);
   const w = wellness.find((x) => x.id === date);
-  const tsb = tsbOf(w);
   const monday = mondayOf(date);
   const week = weekPlan(events, monday);
   const doneLoad = activities
     .filter((a) => a.start_date_local.slice(0, 10) >= monday)
     .reduce((sum, a) => sum + (a.icu_training_load ?? 0), 0);
-  // Still to come: later sessions, and today's while nothing is done today.
-  const doneToday = activities.some((a) => a.start_date_local.startsWith(date));
-  const ahead = week.filter((e) => {
-    const day = e.start_date_local.slice(0, 10);
-    return day > date || (day === date && !doneToday);
-  });
+  const doneToday = activities
+    .filter((a) => a.start_date_local.startsWith(date))
+    .reduce((sum, a) => sum + (a.icu_training_load ?? 0), 0);
   const ftp = athlete.sportSettings?.find((s) => s.types?.includes("Ride"))?.ftp ?? 0;
   return {
     date,
     nights,
     lastNight,
-    ready: readiness(nights, date, tsb),
-    tsb,
+    ready: readiness(nights, date, intensityTrend(w?.ctl, w?.atl)?.pct),
     ftp,
     workout: events.find((e) => e.category === "WORKOUT" && e.start_date_local.startsWith(date)),
     /** Planned sessions and races for the next 6 days. */
@@ -110,12 +108,23 @@ export async function loadToday() {
     volume: weeklyVolume(activities, date),
     corosConnected: connected,
     plannedHours: week.length ? hoursOf(week) : undefined,
-    trend: intensityTrend(w?.ctl, w?.atl, wellness.find((x) => x.id === addDays(date, -1))?.atl),
+    trend: intensityTrend(w?.ctl, w?.atl),
     week: {
       done: Math.round(doneLoad),
       planned: week.length ? Math.round(loadOf(week)) : undefined,
-      projected: Math.round(doneLoad + loadOf(ahead)),
-      ctl: w?.ctl,
+      projected: Math.round(
+        projectedLoad(
+          doneLoad,
+          doneToday,
+          week.map((e) => ({
+            day: e.start_date_local.slice(0, 10),
+            load: e.icu_training_load ?? 0,
+          })),
+          date,
+        ),
+      ),
+      // The fitness the week started from, as on Training's weekly bars.
+      ctl: wellness.find((x) => x.id === addDays(monday, -1))?.ctl ?? w?.ctl,
     },
   };
 }

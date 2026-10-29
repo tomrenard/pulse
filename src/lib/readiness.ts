@@ -6,7 +6,7 @@ import { addDays } from "./date.ts";
  * HRV: mean of ln(rMSSD) over the last 7 nights against your normal, the 60-day mean
  * ± 0.5 SD of ln(rMSSD) (Plews et al. 2013; Javaloyes et al. 2019). The 60 days include the
  * last 7, as in HRV4Training's rolling baseline. Other signals only flag: resting HR above its
- * 60-day mean + 1 SD (at least 3 bpm), sleep under 85 % of need, form (TSB) under −30.
+ * 60-day mean + 1 SD (at least 3 bpm), sleep under 85 % of need, load trend 150 % and up.
  *   red   = HRV below normal plus another flag, or HRV below normal 3 days running
  *   amber = HRV below normal, or two other flags
  *   green = otherwise
@@ -79,7 +79,8 @@ export function rhrNormal(nights: NightInput[], date: string) {
   return { low: Math.round(m - sd(rhrs)), high: Math.round(m + Math.max(sd(rhrs), 3)) };
 }
 
-export function readiness(nights: NightInput[], date: string, tsb?: number) {
+/** `trendPct`: load trend, 7-day ÷ 42-day load in % (lib/load.ts); 150 and up flags fatigue. */
+export function readiness(nights: NightInput[], date: string, trendPct?: number) {
   const normal = hrvNormal(nights, date);
   const week = ln7(nights, date);
   const base = {
@@ -106,7 +107,7 @@ export function readiness(nights: NightInput[], date: string, tsb?: number) {
   const rhr = rhrNormal(nights, date);
   const rhrHigh = Boolean(last?.rhr && rhr && last.rhr > rhr.high);
   const sleepShort = Boolean(last?.asleepSecs && last.asleepSecs < 0.85 * SLEEP_NEED_SECS);
-  const formDeep = tsb !== undefined && tsb < -30;
+  const formDeep = trendPct !== undefined && trendPct >= 150;
   const others = [rhrHigh, sleepShort, formDeep].filter(Boolean).length;
 
   const state: State =
@@ -125,7 +126,7 @@ export function readiness(nights: NightInput[], date: string, tsb?: number) {
     },
     {
       key: "form",
-      label: tsb === undefined ? "Form: no data" : formDeep ? "Very fatigued" : "Fatigue OK",
+      label: trendPct === undefined ? "Load: no data" : formDeep ? "Load excessive" : "Load OK",
       flag: formDeep,
     },
   ];
@@ -141,7 +142,7 @@ export const ACTION: Record<State, string> = {
 };
 
 export type HrvStatus = "Elevated" | "Normal" | "Reduced" | "Low";
-export const HRV_TONE: Record<HrvStatus, "go" | "mid" | "stop"> = {
+const HRV_TONE: Record<HrvStatus, "go" | "mid" | "stop"> = {
   Elevated: "go",
   Normal: "go",
   Reduced: "mid",
@@ -158,6 +159,12 @@ export function hrvStatus(ms: number, n: { lnMean: number; lnSd: number }): HrvS
 }
 
 type Word = { word: string; tone: "go" | "mid" | "stop" };
+
+/** An HRV value's status with its tone, like the other state words. */
+export function hrvWord(ms: number, normal: { lnMean: number; lnSd: number }): Word {
+  const word = hrvStatus(ms, normal);
+  return { word, tone: HRV_TONE[word] };
+}
 
 /** Last night's sleep against the 8 h 30 need. */
 export function sleepWord(secs?: number | null): Word | undefined {

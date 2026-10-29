@@ -193,24 +193,34 @@ export const ZONE_COLORS = [
   "#c06aff",
 ];
 
-/** Share of time per zone as one stacked bar with a legend. */
-export function Zones({ secs, label }: { secs: number[]; label: string }) {
+/** Share of time per zone as one stacked bar; `names` and `colors` override Z1…Z7. */
+export function Zones({
+  secs,
+  label,
+  names = secs.map((_, i) => `Z${i + 1}`),
+  colors = ZONE_COLORS,
+}: {
+  secs: number[];
+  label?: string;
+  names?: string[];
+  colors?: string[];
+}) {
   const total = secs.reduce((s, x) => s + x, 0);
   if (!total) return null;
   const pct = secs.map((x) => Math.round((x / total) * 100));
   return (
     <div className="zones">
-      <span className="dim">{label}</span>
+      {label && <span className="dim">{label}</span>}
       <div
         className="zone-bar"
         role="img"
-        aria-label={`${label}: ${pct.map((p, i) => `Z${i + 1} ${p}%`).join(", ")}`}
+        aria-label={`${label ?? "Zones"}: ${pct.map((p, i) => `${names[i]} ${p}%`).join(", ")}`}
       >
         {secs.map((x, i) =>
           x > 0 ? (
             // biome-ignore lint/suspicious/noArrayIndexKey: zones are fixed positions
-            <i key={i} style={{ flex: x, background: ZONE_COLORS[i] }}>
-              {(pct[i] ?? 0) >= 18 ? `Z${i + 1} ${pct[i]}%` : (pct[i] ?? 0) >= 8 ? `Z${i + 1}` : ""}
+            <i key={i} style={{ flex: x, background: colors[i] }}>
+              {(pct[i] ?? 0) >= 18 ? `${names[i]} ${pct[i]}%` : (pct[i] ?? 0) >= 8 ? names[i] : ""}
             </i>
           ) : null,
         )}

@@ -38,7 +38,9 @@ export const FORM_ZONES = [
   { name: "Excessive", min: Number.NEGATIVE_INFINITY, color: "var(--stop)" },
 ] as const;
 
-export const formZone = (pct: number) => FORM_ZONES.find((z) => pct > z.min) ?? FORM_ZONES[4];
+/** Rounded first, like the trend %, so a band edge reads the same on the chart and in the hero. */
+export const formZone = (pct: number) =>
+  FORM_ZONES.find((z) => Math.round(pct) > z.min) ?? FORM_ZONES[4];
 
 /**
  * Race-day form target: long events (≥ 4 h) want about neutral to slightly fresh, so fitness

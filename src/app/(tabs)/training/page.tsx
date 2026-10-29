@@ -29,7 +29,7 @@ export default async function TrainingPage() {
   const loadTop = Math.max(...loads.map((w) => Math.max(w.load, w.usual ?? 0)), 1);
   const mix = intensityMix(t.zones.hr);
   // The same words as Today: COROS's load trend, not intervals.icu's form zones.
-  const trend = intensityTrend(t.ctl, t.atl, t.atlBefore);
+  const trend = intensityTrend(t.ctl, t.atl);
   // Last 3 weeks of activities, grouped Monday to Sunday; older ones behind "Show more".
   const weeks = new Map<string, typeof t.feed>();
   for (const a of t.feed) {
@@ -95,7 +95,8 @@ export default async function TrainingPage() {
               Fitness is your 42-day load average, fatigue your 7-day one; form is fitness minus
               fatigue (intervals.icu), also shown as a % of fitness. The zones are COROS's load
               trend, the same words as Today: Optimized 0 to −50 % (building), Excessive below −50
-              %, Maintaining 0 to +20 %, Performance +20 to +50 % (tapered, race-ready).
+              %, Maintaining 0 to +20 %, Performance +20 to +50 % (a deep taper or a break).
+              Outlook's race-day targets (0 to +20 %) sit in Maintaining: fresh, fitness kept.
             </p>
             <p>
               Ramp is the weekly change in fitness. +5 to +8 a week is a common rule of thumb, not a
@@ -138,7 +139,7 @@ export default async function TrainingPage() {
             {WEEK_ZONES.map((z, i) => (
               <span key={z.label}>
                 <i className={`wz${i}`} />
-                {["Lose", "Keep", "Build", "Over"][i]}
+                {z.short}
               </span>
             ))}
           </div>
@@ -170,29 +171,11 @@ export default async function TrainingPage() {
           <div className="mod-b">
             {mix && (
               <>
-                <div
-                  className="zone-bar mix"
-                  role="img"
-                  aria-label={`Easy ${Math.round(mix.easy * 100)}%, moderate ${Math.round(mix.moderate * 100)}%, hard ${Math.round(mix.hard * 100)}%`}
-                >
-                  {(
-                    [
-                      ["Easy", mix.easy, "var(--go)"],
-                      ["Mod", mix.moderate, "var(--mid)"],
-                      ["Hard", mix.hard, "var(--stop)"],
-                    ] as const
-                  ).map(([name, share, bg]) =>
-                    share > 0 ? (
-                      <i key={name} style={{ flex: share, background: bg }}>
-                        {share >= 0.18
-                          ? `${name} ${Math.round(share * 100)}%`
-                          : share >= 0.08
-                            ? `${Math.round(share * 100)}`
-                            : ""}
-                      </i>
-                    ) : null,
-                  )}
-                </div>
+                <Zones
+                  secs={[mix.easy, mix.moderate, mix.hard]}
+                  names={["Easy", "Mod", "Hard"]}
+                  colors={["var(--go)", "var(--mid)", "var(--stop)"]}
+                />
                 <p className="mod-line">
                   <span className={`signal-word ${mix.tone}`}>{mix.text}</span>
                 </p>

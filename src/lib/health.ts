@@ -1,7 +1,7 @@
 import { addDays, today } from "@/lib/date";
 import { intervals } from "@/lib/intervals";
 import { intensityTrend } from "@/lib/load";
-import { loadNights, orNothing, tsbOf } from "@/lib/nights";
+import { loadNights, orNothing } from "@/lib/nights";
 import { readiness, rhrNormal, tagEffects } from "@/lib/readiness";
 import { dailyLoads, recoveryResponse } from "@/lib/recovery";
 
@@ -38,8 +38,8 @@ export async function loadHealth() {
     nights,
     lastNight,
     lastTags,
-    ready: readiness(nights, date, tsbOf(w)),
-    trend: intensityTrend(w?.ctl, w?.atl, wellness.find((x) => x.id === addDays(date, -1))?.atl),
+    ready: readiness(nights, date, intensityTrend(w?.ctl, w?.atl)?.pct),
+    trend: intensityTrend(w?.ctl, w?.atl),
     rhr: rhrNormal(nights, date),
     weights,
     weight: weights.at(-1)?.value ?? athlete.icu_weight,

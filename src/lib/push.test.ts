@@ -41,6 +41,6 @@ test("a flagged day adapts the session; a lone low night is named", () => {
   const lowNight = { ...base, lastNight: { hrv: 52 }, workout: undefined } as unknown as T;
   expect(morningMessage(lowNight)).toEqual({
     title: "Ready · Train as planned",
-    body: "Last night's HRV dipped, check tomorrow.\nHRV 52 ms, low · load 81 of 203\nNo workout planned",
+    body: "Last night's HRV dipped, check tomorrow.\nload 81 of 203\nNo workout planned",
   });
 });

@@ -4,7 +4,7 @@ import { addDays, weekday } from "@/lib/date";
 import { hmm } from "@/lib/format";
 import { type Trend, WEEK_ZONES, weekZone } from "@/lib/load";
 import { splitPlan } from "@/lib/plan";
-import { HRV_TONE, type HrvStatus, hrvStatus, rhrWord, sleepWord } from "@/lib/readiness";
+import { type HrvStatus, hrvStatus, hrvWord, rhrWord, sleepWord } from "@/lib/readiness";
 import { type PlanEvent, profile } from "@/lib/today";
 import { hoursOf, sportOf } from "@/lib/volume";
 import { Glyph, hm, Module, SportChip } from "./ui";
@@ -275,7 +275,7 @@ export function Signals({
   rhr?: { low: number; high: number };
   trend?: Trend;
 }) {
-  const hrv = hrv7 && hrvNormal ? hrvStatus(hrv7, hrvNormal) : undefined;
+  const hrv = hrv7 && hrvNormal ? hrvWord(hrv7, hrvNormal) : undefined;
   const sleep = sleepWord(last?.asleepSecs);
   const rest = rhrWord(last?.rhr, rhr);
   const signals: Signal[] = [
@@ -291,8 +291,8 @@ export function Signals({
       ),
       value: hrv7 ? `${Math.round(hrv7)}` : "–",
       unit: "ms",
-      state: hrv ? HRV_TONE[hrv] : "go",
-      word: hrv ?? "Learning",
+      state: hrv?.tone ?? "go",
+      word: hrv?.word ?? "Learning",
     },
     {
       key: "rhr",
@@ -395,15 +395,6 @@ export const nightInfo = (normal: Normal, hrv7?: number) => (
   </p>
 );
 
-export const HrvWord = ({ hrv, normal }: { hrv: number; normal: Normal }) => {
-  const status = hrvStatus(hrv, normal);
-  return (
-    <>
-      {Math.round(hrv)} ms <span className={`signal-word ${HRV_TONE[status]}`}>{status}</span>
-    </>
-  );
-};
-
 export function LastNight({
   hrv,
   hrv7,
@@ -417,7 +408,14 @@ export function LastNight({
   return (
     <Module
       title="HRV last night"
-      value={<HrvWord hrv={hrv} normal={normal} />}
+      value={
+        <>
+          {Math.round(hrv)} ms{" "}
+          <span className={`signal-word ${hrvWord(hrv, normal).tone}`}>
+            {hrvWord(hrv, normal).word}
+          </span>
+        </>
+      }
       info={nightInfo(normal, hrv7)}
     >
       <div className="mod-b">
@@ -479,9 +477,9 @@ export function WeekLoad({
           <span className="seg" style={{ width: pct(done) }} />
         </span>
         <span className="week-scale" aria-hidden="true">
-          {["Lose", "Keep", "Build", "Over"].map((w, i) => (
-            <span key={w} style={{ left: pct(([0, 0.8, 1, 1.5][i] ?? 0) * usual) }}>
-              {w}
+          {WEEK_ZONES.map((z) => (
+            <span key={z.short} style={{ left: pct(z.from * usual) }}>
+              {z.short}
             </span>
           ))}
         </span>

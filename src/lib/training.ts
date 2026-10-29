@@ -76,7 +76,6 @@ export async function loadTraining() {
     fitness,
     ctl: now?.ctl,
     atl: now?.atl,
-    atlBefore: known.at(-2)?.atl,
     tsb: tsbOf(now),
     ramp: now?.rampRate,
     plan: events.filter(

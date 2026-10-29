@@ -3,8 +3,8 @@ import { hmm, signed } from "@/lib/format";
 import { loadHealth, TAGS } from "@/lib/health";
 import {
   bedtimeWord,
-  HRV_TONE,
   hrvStatus,
+  hrvWord,
   MIN_NIGHTS,
   MIN_TAGGED,
   mean,
@@ -115,13 +115,7 @@ export default async function HealthPage() {
           {
             label: "HRV last night",
             value: last?.hrv ? `${Math.round(last.hrv)} ms` : "–",
-            word:
-              last?.hrv && ready.normal
-                ? (() => {
-                    const word = hrvStatus(last.hrv, ready.normal);
-                    return { word, tone: HRV_TONE[word] };
-                  })()
-                : undefined,
+            word: last?.hrv && ready.normal ? hrvWord(last.hrv, ready.normal) : undefined,
           },
           {
             label: "Resting HR",
